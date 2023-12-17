@@ -44,8 +44,7 @@ class Board:
     def __init__(self):
         self.map = []
         for i in range(self.HEIGHT):
-            # TODO: replace with empty map and let gems fall in to reduce redundant code (generating gems)
-            self.map.append([random.randint(0, 6) for i in range(self.WIDTH)])
+            self.map.append([-1 for i in range(self.WIDTH)])
 
     def __enter__(self):
         # Shortens the curses escape delay
@@ -239,6 +238,17 @@ class Board:
                     # Generate number between 0 and 6
                     self.map[0][col] = random.randint(0, 6)
                     self.fall_gem(0, col)
+        # TODO: add a classic mode
+        # If there isn't any more moves to make, refresh the board.
+        exists_valid_piece = False
+        for row in range(self.HEIGHT):
+            for column in range(self.WIDTH):
+                if self.is_valid_piece(row, column):
+                    exists_valid_piece = True
+        if exists_valid_piece == False:
+            self.map = []
+            for i in range(self.HEIGHT):
+                self.map.append([-1 for i in range(self.WIDTH)])
         # We're done! Time to make your next move...
         self.allow_input = True
 
@@ -262,10 +272,10 @@ class Board:
             # Just find *an* adjacent piece (can be the first one). That's all we care about.
             if self.is_in_map(coords) and self.map[coords[0]][coords[1]] == gem:
                 # Try swapping the gem in all directions and seeing if it is valid
-                return (self.is_in_map([row - 1, col]) and self.is_valid_move(row - 1, col, gem)) or\
-                        (self.is_in_map([row + 1, col]) and self.is_valid_move(row + 1, col, gem)) or\
-                        (self.is_in_map([row, col - 1]) and self.is_valid_move(row, col - 1, gem)) or\
-                        (self.is_in_map([row, col + 1]) and self.is_valid_move(row, col + 1, gem))
+                return (self.is_in_map([row - 1, col]) and self.is_valid_move([row, col], [row - 1, col])) or\
+                        (self.is_in_map([row + 1, col]) and self.is_valid_move([row, col], [row + 1, col])) or\
+                        (self.is_in_map([row, col - 1]) and self.is_valid_move([row, col], [row, col - 1])) or\
+                        (self.is_in_map([row, col + 1]) and self.is_valid_move([row, col], [row, col + 1]))
 
 
     # TODO: refactor, this is some HORRIBLE spaghetti code
@@ -357,7 +367,7 @@ class Board:
                     gem_int /= -1
                 # Pick a dynamic color per mode, or use the gem's color
                 color = GEMS[gem_int][1] if gem_int in GEMS else None
-                if row == self.cursor[0] and col == self.cursor[1]:
+                if row == self.cursor[0] and col == self.cursor[1] and self.allow_input:
                     match self.mode:
                         case self.modes.SELECT:
                             color = None
@@ -368,7 +378,7 @@ class Board:
                         " " + str(GEMS[gem_int][0] if gem_int in GEMS else gem_int),
                         end=" ",
                         color=color,
-                        reverse=(row == self.cursor[0] and col == self.cursor[1]) or inverted
+                        reverse=(row == self.cursor[0] and col == self.cursor[1] and self.allow_input) or inverted
                     )
             self.print("")
         # TODO get rid of this following line
