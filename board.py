@@ -28,6 +28,7 @@ class Board:
     modes = Enum("Modes", ["SELECT", "SWAP", "COMMAND"])
     mode = None
     cursor = [0, 0]
+    allow_input = True
 
     # statuses
     time_ticks = 0
@@ -43,6 +44,7 @@ class Board:
     def __init__(self):
         self.map = []
         for i in range(self.HEIGHT):
+            # TODO: replace with empty map and let gems fall in to reduce redundant code (generating gems)
             self.map.append([random.randint(0, 6) for i in range(self.WIDTH)])
 
     def __enter__(self):
@@ -74,18 +76,18 @@ class Board:
         self.mode = self.modes.SELECT
         # Enter game loop:
         #   the game runs as fast as possible and gets input (opposed to updating per input)
-        self.last_error = ""
         while self.running:
             try:
                 # Updates the game/main screen
                 self.stdscr.erase()
                 self.update()
-                self.print(self.last_error)
                 self.stdscr.refresh()
                 # Updates the status bar
                 self.update_status()
             except:
-                self.last_error = traceback.format_exc()
+                self.running = False
+                self.__exit__(None, None, None)
+                print(traceback.format_exc())
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stdscr.keypad(False)
@@ -109,7 +111,7 @@ class Board:
         :return:
         """
         self.print_board()
-        self.handle_input()
+        if self.allow_input: self.handle_input()
         self.update_board()
 
     def print(self, *strings: str, end="\n", color=None, reverse=False):
@@ -174,7 +176,9 @@ class Board:
 
             case "R":
                 cursor_swap[1] += 1
-        if self.is_in_map(cursor_swap):
+        # IF the swapped cursor is in the map, and either gem you are swapping forms a match
+        if self.is_in_map(cursor_swap) and\
+                (self.is_valid_move(self.cursor, cursor_swap) or self.is_valid_move(cursor_swap, self.cursor)):
             tmp = self.map[self.cursor[0]][self.cursor[1]]
             self.map[self.cursor[0]][self.cursor[1]] = self.map[cursor_swap[0]][cursor_swap[1]]
             self.map[cursor_swap[0]][cursor_swap[1]] = tmp
@@ -191,6 +195,7 @@ class Board:
         """
         Checks for matches, then makes everything fall, and then restocks gems
         """
+        self.allow_input = False # Disable input until everything is done -- especially animations.
         flagged_for_deletion = [] # array consisting of [row, col].
         # Flag things for deletion rather than deleting them right away. This also lets us check for chains.
         for row in range(self.HEIGHT):
@@ -222,7 +227,8 @@ class Board:
         # If a gem detects a space below it, it will keep swapping with that space until it doesn't detect one anymore.
         for row in range(self.HEIGHT):
             for col in range(self.WIDTH):
-                self.fall_gem(row, col)
+                # note: don't fall -1's
+                if self.map[row][col] != -1: self.fall_gem(row, col)
         # Now we add in more gems from the top (row == 0)
         top_empty = True
         while top_empty:
@@ -233,6 +239,77 @@ class Board:
                     # Generate number between 0 and 6
                     self.map[0][col] = random.randint(0, 6)
                     self.fall_gem(0, col)
+        # We're done! Time to make your next move...
+        self.allow_input = True
+
+    def is_valid_piece(self, row, col):
+        """
+        Checks if a piece has any valid moves.
+        """
+        gem = self.map[row][col]
+        # First checks if any of the pieces around the shape are the same as the shape.
+        adjacent = [
+            [row - 1, col + 1],
+            [row, col + 1],
+            [row + 1, col + 1],
+            [row + 1, col],
+            [row + 1, col - 1],
+            [row, col - 1],
+            [row - 1, col - 1],
+            [row - 1, col]
+        ]
+        for coords in adjacent:
+            # Just find *an* adjacent piece (can be the first one). That's all we care about.
+            if self.is_in_map(coords) and self.map[coords[0]][coords[1]] == gem:
+                # Try swapping the gem in all directions and seeing if it is valid
+                return (self.is_in_map([row - 1, col]) and self.is_valid_move(row - 1, col, gem)) or\
+                        (self.is_in_map([row + 1, col]) and self.is_valid_move(row + 1, col, gem)) or\
+                        (self.is_in_map([row, col - 1]) and self.is_valid_move(row, col - 1, gem)) or\
+                        (self.is_in_map([row, col + 1]) and self.is_valid_move(row, col + 1, gem))
+
+
+    # TODO: refactor, this is some HORRIBLE spaghetti code
+    def is_valid_move(self, original_coords: list, swapped_coords: list):
+        """
+        Assumes `shape` is at row, col and checks to see if it matches anything.
+        Instead of the check in update_board(), this has to check if the piece is an edge piece!
+        """
+        gem = self.map[original_coords[0]][original_coords[1]]
+        # HORIZONTAL CHAINS:
+        # Get the whole row
+        row = self.map[swapped_coords[0]].copy()
+        # Swap what we need
+        if original_coords[0] == swapped_coords[0]:
+            row[original_coords[1]] = row[swapped_coords[1]]
+        row[swapped_coords[1]] = gem
+        # Run through the whole thing, count the chain
+        if self.get_longest_chain_in_row(row, gem) >= 3:
+            return True
+        # VERTICAL CHAINS:
+        # Get the whole column (harder)
+        column = [self.map[i][swapped_coords[1]] for i in range(self.HEIGHT)]
+        # Swap what we need
+        if original_coords[1] == swapped_coords[1]:
+            column[original_coords[0]] = column[swapped_coords[0]]
+        column[swapped_coords[0]] = gem
+        return self.get_longest_chain_in_row(column, gem) >= 3
+
+    def get_longest_chain_in_row(self, row: list, gem):
+        chain_active = False
+        longest_chain = 0
+        chain = 0
+        for g in row:
+            if g == gem:
+                chain += 1
+                chain_active = True
+            elif g != gem and chain_active == True:
+                chain_active = False
+                if chain > longest_chain:
+                    longest_chain = chain
+                chain = 0
+        if chain > longest_chain:
+            longest_chain = chain
+        return longest_chain
 
     
     def fall_gem(self, row, col):
@@ -256,7 +333,6 @@ class Board:
     def reprint_board(self):
         self.stdscr.erase()
         self.print_board()
-        self.print(self.last_error)
         self.stdscr.refresh()
 
 
