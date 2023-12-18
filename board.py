@@ -358,10 +358,12 @@ class Board:
         space_detected = False
         nrow = row # n stands for new!
         ncol = col
+        wait_time = self.WAIT_TIME_FALL
         while self.is_in_map([nrow + 1, ncol]) and space_detected == False:
             if self.map[nrow + 1][ncol] == -1:
                 self.reprint_board()
-                time.sleep(self.WAIT_TIME_FALL)
+                time.sleep(wait_time)
+                wait_time *= 0.3 # Acceleration! It helps make things feel less slow.
                 self.map[nrow + 1][ncol] = self.map[nrow][ncol]
                 self.map[nrow][ncol] = -1
                 nrow += 1
