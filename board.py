@@ -25,10 +25,14 @@ class Board:
     map = []
 
     # game vars
+    SCORE_MULTIPLIER = 30 # how many points you get per gem swapped
+    SCORE_PER_LEVEL = 2000 # TODO: increase this by a certain amount each level (maybe x1.5?), just like the actual game
     modes = Enum("Modes", ["SELECT", "SWAP", "COMMAND"])
     mode = None
     cursor = [0, 0]
     allow_input = True
+    score = 0
+    level = 0
 
     # statuses
     time_ticks = 0
@@ -38,6 +42,7 @@ class Board:
     WAIT_TIME_FALL = 0.05
 
     # curses vars
+    level_bar = None
     status_bar = None
     stdscr = None
 
@@ -51,9 +56,11 @@ class Board:
         os.environ.setdefault('ESCDELAY', '15')
         # Initializes the main screen/status bar
         self.stdscr = curses.initscr()
-        self.stdscr.resize(curses.LINES - len(self.get_status()) - 1, curses.COLS)
-        self.status_bar = curses.newwin(len(self.get_status()) + 1, curses.COLS,
-                                        curses.LINES - len(self.get_status()) - 1, 0)
+        self.stdscr.resize(curses.LINES - 2, curses.COLS)
+        self.level_bar = curses.newwin(1, curses.COLS + 1, curses.LINES - 2, 0) 
+        self.status_bar = curses.newwin(1, curses.COLS + 1, curses.LINES - 1, 0)
+        self.level_bar.border(0)
+        self.status_bar.border(0)
         curses.start_color()
         # You don't have to hit the enter key after inputting characters
         curses.cbreak()
@@ -83,6 +90,8 @@ class Board:
                 self.stdscr.refresh()
                 # Updates the status bar
                 self.update_status()
+                # Updates the level bar
+                self.update_level_bar()
             except:
                 self.running = False
                 self.__exit__(None, None, None)
@@ -99,10 +108,19 @@ class Board:
         Updates the status screen.
         """
         self.status_bar.erase()
-        for i, status in enumerate(self.get_status()):
-            self.status_bar.addstr(i + 1, 0, status, curses.A_REVERSE)
-            self.status_bar.addstr(i + 1, len(status), " " * (curses.COLS - len(status) - 1), curses.A_REVERSE)
+        status = " " + " | ".join(self.get_status())
+        self.status_bar.addstr(status, curses.A_REVERSE)
+        self.status_bar.addstr(" " * (self.status_bar.getmaxyx()[1] - len(status) - 1), curses.A_REVERSE)
         self.status_bar.refresh()
+
+    def update_level_bar(self):
+        """
+        Updates the level progress bar.
+        """
+        self.level_bar.erase()
+        progress = floor((self.score / self.SCORE_PER_LEVEL) * self.level_bar.getmaxyx()[1])
+        if curses.COLS >= progress > 0: self.level_bar.addstr(" " * progress, curses.color_pair(3) + curses.A_REVERSE)
+        self.level_bar.refresh()
 
     def update(self):
         """
@@ -111,6 +129,10 @@ class Board:
         """
         self.print_board()
         if self.allow_input: self.handle_input()
+        # TODO: cool animation as we scramble pieces
+        if self.score >= self.SCORE_PER_LEVEL:
+            self.score = 0
+            self.level += 1
         self.update_board()
 
     def print(self, *strings: str, end="\n", color=None, reverse=False):
@@ -211,6 +233,8 @@ class Board:
                         flagged_for_deletion.append([row, col - 1])
                         flagged_for_deletion.append([row, col])
                         flagged_for_deletion.append([row, col + 1])
+        # Add to the score.
+        self.score += len(flagged_for_deletion) * self.SCORE_MULTIPLIER
         # Turn everything we flagged into a blank space int
         if len(flagged_for_deletion) > 0:
             # Make everything negative. This flags that we want to print it inverted.
@@ -387,4 +411,4 @@ class Board:
         last_cursor_pos = self.stdscr.getyx()
 
     def get_status(self) -> tuple:
-        return (self.mode.name if self.mode else " ",)
+        return (self.mode.name if self.mode else " ", str(self.score), "Level %d" % (self.level + 1))
