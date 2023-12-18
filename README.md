@@ -1,7 +1,7 @@
-cmdjewel (WIP)
-==============
+cmdjewel
+========
 
-![screenshot](https://github.com/pastthepixels/cmdjewel/assets/52388215/2cc12106-d9ea-4e3f-8f0a-b024e0c60ef2)
+[cmdjewel.webm](https://github.com/pastthepixels/cmdjewel/assets/52388215/7d66040f-5730-4c83-a68f-218b78081a37)
 
 Terminal match-3 game inspired by Bejeweled.
 
