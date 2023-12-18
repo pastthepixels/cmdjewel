@@ -8,9 +8,9 @@ GEMS = {
     -1: [" ", 1],
     # Gems!
     0: ["▼", 5],
-    1: ["⬤", 0],
+    1: ["●", 0],
     2: ["■", 2],
-    3: ["⯁", 4],
+    3: ["◆", 4],
     4: ["◎", 3],
     5: ["⬢", 10],
     6: ["▲", 148]
@@ -31,7 +31,8 @@ class Board:
     mode = None
     cursor = [0, 0]
     allow_input = True
-    score = 0
+    score = 0 # This is just for a level
+    total_score = 0 # This is the score across a game
     level = 0
 
     # statuses
@@ -108,9 +109,10 @@ class Board:
         Updates the status screen.
         """
         self.status_bar.erase()
-        status = " " + " | ".join(self.get_status())
+        status = " " + " | ".join(self.get_status()[:-1])
         self.status_bar.addstr(status, curses.A_REVERSE)
         self.status_bar.addstr(" " * (self.status_bar.getmaxyx()[1] - len(status) - 1), curses.A_REVERSE)
+        self.status_bar.addstr(0, self.status_bar.getmaxyx()[1] - len(self.get_status()[-1]) - 2, self.get_status()[-1], curses.A_REVERSE)
         self.status_bar.refresh()
 
     def update_level_bar(self):
@@ -130,7 +132,7 @@ class Board:
         self.print_board()
         if self.allow_input: self.handle_input()
         # TODO: cool animation as we scramble pieces
-        if self.score >= self.SCORE_PER_LEVEL:
+        if self.score >= self.SCORE_PER_LEVEL and self.mode == self.modes.SELECT:
             self.score = 0
             self.level += 1
         self.update_board()
@@ -234,7 +236,9 @@ class Board:
                         flagged_for_deletion.append([row, col])
                         flagged_for_deletion.append([row, col + 1])
         # Add to the score.
-        self.score += len(flagged_for_deletion) * self.SCORE_MULTIPLIER
+        score = len(flagged_for_deletion) * self.SCORE_MULTIPLIER
+        self.total_score += score
+        self.score += score
         # Turn everything we flagged into a blank space int
         if len(flagged_for_deletion) > 0:
             # Make everything negative. This flags that we want to print it inverted.
@@ -411,4 +415,4 @@ class Board:
         last_cursor_pos = self.stdscr.getyx()
 
     def get_status(self) -> tuple:
-        return (self.mode.name if self.mode else " ", str(self.score), "Level %d" % (self.level + 1))
+        return (str(self.total_score), "Level %d" % (self.level + 1), self.mode.name if self.mode else " ")
