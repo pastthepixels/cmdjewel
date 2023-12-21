@@ -1,6 +1,7 @@
 import curses, os, random, traceback, time
 from enum import Enum
 from math import floor
+from console import *
 
 # Note: Negative numbers are reserved for inverted prints.
 GEMS = {
@@ -57,11 +58,8 @@ class Board:
         os.environ.setdefault('ESCDELAY', '15')
         # Initializes the main screen/status bar
         self.stdscr = curses.initscr()
-        self.stdscr.resize(curses.LINES - 2, curses.COLS)
-        self.level_bar = curses.newwin(1, curses.COLS + 1, curses.LINES - 2, 0) 
-        self.status_bar = curses.newwin(1, curses.COLS + 1, curses.LINES - 1, 0)
-        self.level_bar.border(0)
-        self.status_bar.border(0)
+        self.level_bar = ProgressBar(screen=self.stdscr, progress=0, foreground_color=3, y=1)#curses.newwin(1, self.stdscr.getmaxyx()[1], curses.LINES - 2, 0) 
+        self.status_bar = StatusBar(screen=self.stdscr, y=0)#curses.newwin(1, self.stdscr.getmaxyx()[1], curses.LINES - 1, 0)
         curses.start_color()
         # You don't have to hit the enter key after inputting characters
         curses.cbreak()
@@ -85,14 +83,14 @@ class Board:
         #   the game runs as fast as possible and gets input (opposed to updating per input)
         while self.running:
             try:
+                # Automatically resizes the terminal
+                self.resize_windows()
                 # Updates the game/main screen
                 self.stdscr.erase()
                 self.update()
                 self.stdscr.refresh()
-                # Updates the status bar
-                self.update_status()
-                # Updates the level bar
-                self.update_level_bar()
+            except curses.error:
+                pass
             except:
                 self.running = False
                 self.__exit__(None, None, None)
@@ -108,29 +106,29 @@ class Board:
         """
         Updates the status screen.
         """
-        self.status_bar.erase()
-        status = " " + " | ".join(self.get_status()[:-1])
-        self.status_bar.addstr(status, curses.A_REVERSE)
-        self.status_bar.addstr(" " * (self.status_bar.getmaxyx()[1] - len(status) - 1), curses.A_REVERSE)
-        self.status_bar.addstr(0, self.status_bar.getmaxyx()[1] - len(self.get_status()[-1]) - 2, self.get_status()[-1], curses.A_REVERSE)
-        self.status_bar.refresh()
+        self.status_bar.set_status_left(" | ".join(self.get_status()[:-1]))
+        self.status_bar.set_status_right(self.get_status()[-1])
+        self.status_bar.update()
 
     def update_level_bar(self):
         """
         Updates the level progress bar.
         """
-        self.level_bar.erase()
-        progress = floor((self.score / self.SCORE_PER_LEVEL) * self.level_bar.getmaxyx()[1])
-        if curses.COLS >= progress > 0: self.level_bar.addstr(" " * progress, curses.color_pair(3) + curses.A_REVERSE)
-        self.level_bar.refresh()
+        self.level_bar.set_progress(self.score, self.SCORE_PER_LEVEL)
+        self.level_bar.update()
 
     def update(self):
         """
         game loop
         :return:
         """
+        # Prints everything
         self.print_board()
+        self.update_status()
+        self.update_level_bar()
+        # Handles input
         if self.allow_input: self.handle_input()
+        # Handles mechanics
         # TODO: cool animation as we scramble pieces
         if self.score >= self.SCORE_PER_LEVEL and self.mode == self.modes.SELECT:
             self.score = 0
@@ -143,6 +141,18 @@ class Board:
                 self.stdscr.addstr(str(string) + end, curses.color_pair(color) + (curses.A_REVERSE if reverse else 0))
             else:
                 self.stdscr.addstr(str(string) + end, curses.A_REVERSE if reverse else 0)
+    
+    # TODO: stdscr which is terminal size
+    #       everything, ex. board scr, status scr, progress scr is a child of that
+    def resize_windows(self):
+        pass
+        rows, cols = self.stdscr.getmaxyx()
+        self.stdscr.resize(rows, cols)
+        #if curses.is_term_resized(curses.LINES, cols):
+        #    self.stdscr.resize(rows - 2, cols)
+            #curses.resizeterm(curses.LINES, cols)
+        #self.stdscr.resize(curses.LINES - 2, curses.COLS)
+            #curses.resizeterm(rows + 2, cols)
 
     key = 0
     def handle_input(self):
@@ -373,6 +383,8 @@ class Board:
     def reprint_board(self):
         self.stdscr.erase()
         self.print_board()
+        self.update_status()
+        self.update_level_bar()
         self.stdscr.refresh()
 
 
