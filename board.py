@@ -255,6 +255,8 @@ class Board:
         self.score += score
         # Turn everything we flagged into a blank space int
         if len(flagged_for_deletion) > 0:
+            # Beep to indicate a match.
+            curses.beep()
             # Make everything negative. This flags that we want to print it inverted.
             for flag in flagged_for_deletion:
                 if self.map[flag[0]][flag[1]] > -10:
