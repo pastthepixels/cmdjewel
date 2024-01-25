@@ -233,6 +233,11 @@ class Board:
         Checks for matches, then makes everything fall, and then restocks gems
         """
         self.allow_input = False  # Disable input until everything is done -- especially animations.
+        # Step 1: fill in the whole board, and make each gem fall to the bottom
+        last_fall = True # Whether or not the last call to fall_all_and_replace resulted in something falling
+        while last_fall == True:
+            last_fall = self.fall_all_and_replace()
+        # Step 2: check for matches.
         flagged_for_deletion = []  # array consisting of [row, col].
         # Flag things for deletion rather than deleting them right away. This also lets us check for chains.
         for row in range(self.HEIGHT):
@@ -266,23 +271,32 @@ class Board:
             time.sleep(self.WAIT_TIME_ACTION)
         for flag in flagged_for_deletion:
             self.map[flag[0]][flag[1]] = -1
-        # We flagged what we want to remove by making it an empty space (-1). Now we want to make gems fall!
-        self.fall_all_and_replace()
         # Check for an end state -- and do something about that.
         self.check_end_state()
         # We're done! Time to make your next move...
         self.allow_input = True
     
-    def fall_all_and_replace(self):
+    def fall_all_and_replace(self) -> bool:
         """
         Makes every gem fall, and adds in new ones from the top if there are empty spaces.
         """
+        fell = False
         # If a gem detects a space below it, it will keep swapping with that space until it doesn't detect one anymore.
-        for row in range(self.HEIGHT):
+        row = self.HEIGHT - 1
+        while row >= 0:
+            gem_fell = False
             for col in range(self.WIDTH):
                 # note: don't fall -1's
                 if self.map[row][col] != -1:
-                    self.fall_gem(row, col)
+                    if self.fall_gem(row, col) == True: gem_fell = True
+            if gem_fell: # Reprint/wait only if a gem actually fell
+                fell = True
+                row += 1
+                self.reprint_board()
+                time.sleep(self.WAIT_TIME_FALL)
+            else:
+                # Important for the loop to converge
+                row -= 1
         # Now we add in more gems from the top (row == 0)
         top_empty = True
         while top_empty:
@@ -293,6 +307,8 @@ class Board:
                     # Generate number between 0 and 6
                     self.map[0][col] = random.randint(0, 6)
                     self.fall_gem(0, col)
+        # Returns true if a gem fell
+        return fell
 
     def check_end_state(self):
         """
@@ -379,26 +395,17 @@ class Board:
             longest_chain = chain
         return longest_chain
 
-    def fall_gem(self, row, col):
+    def fall_gem(self, row, col) -> bool:
         """
         Makes a gem "fall" (go down each empty space, or -1)
         Assumes there is a VALID gem at row, col
         """
-        space_detected = False
-        nrow = row  # n stands for new!
-        ncol = col
-        wait_time = self.WAIT_TIME_FALL
-        while self.is_in_map([nrow + 1, ncol]) and not space_detected:
-            if self.map[nrow + 1][ncol] == -1:
-                self.reprint_board()
-                time.sleep(wait_time)
-                # Acceleration! It helps make things feel less slow.
-                wait_time *= 0.3
-                self.map[nrow + 1][ncol] = self.map[nrow][ncol]
-                self.map[nrow][ncol] = -1
-                nrow += 1
-            else:
-                space_detected = True
+        if row + 1 < self.HEIGHT and self.map[row + 1][col] == -1:
+            self.map[row + 1][col] = self.map[row][col]
+            self.map[row][col] = -1
+            return True
+        else:
+            return False
 
     def reprint_board(self):
         self.stdscr.erase()
