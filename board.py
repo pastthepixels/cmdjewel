@@ -3,22 +3,25 @@ import os
 import random
 import traceback
 import time
-from enum import Enum
+from enum import Enum, IntEnum
 from math import floor
 from console import StatusBar, ProgressBar
 
 # Note: Negative numbers are reserved for inverted prints.
+# ID's for each gem type - enum
+GEM_TYPES = IntEnum("GEM_TYPES", ["blank", "diamond", "circle", "square", "kite", "green", "hexagon", "triangle"]) 
+# 
 GEMS = {
     # Blank space listed first
-    -1: [" ", 1],
+    GEM_TYPES.blank: [" ", 1],
     # Gems!
-    0: ["▼", 5],
-    1: ["●", 0],
-    2: ["■", 2],
-    3: ["◆", 4],
-    4: ["◎", 3],
-    5: ["⬢", 10],
-    6: ["▲", 148]
+    GEM_TYPES.diamond: ["▼", 5],
+    GEM_TYPES.circle: ["●", 0],
+    GEM_TYPES.square: ["■", 2],
+    GEM_TYPES.kite: ["◆", 4],
+    GEM_TYPES.green: ["◎", 3],
+    GEM_TYPES.hexagon: ["⬢", 10],
+    GEM_TYPES.triangle: ["▲", 148]
 }
 
 KEYBINDS = {
@@ -64,7 +67,7 @@ class Board:
     def __init__(self):
         self.map = []
         for i in range(self.HEIGHT):
-            self.map.append([-1 for i in range(self.WIDTH)])
+            self.map.append([GEM_TYPES.blank for i in range(self.WIDTH)])
 
     def __enter__(self):
         # Shortens the curses escape delay
@@ -103,8 +106,8 @@ class Board:
                 self.stdscr.erase()
                 self.update()
                 self.stdscr.refresh()
-            except curses.error:
-                pass
+            #except curses.error:
+            #    pass
             except:
                 self.running = False
                 self.__exit__(None, None, None)
@@ -133,8 +136,7 @@ class Board:
 
     def update(self):
         """
-        game loop
-        :return:
+        Main game loop.
         """
         # Prints everything
         self.print_board()
@@ -160,9 +162,18 @@ class Board:
                                    curses.A_REVERSE if reverse else 0)
 
     def handle_input(self):
+        """
+        Handles all keyboard input, and preforms important operations:
+        - Swaps a selected gem with a gem in a direction if directional keys are pressed (in SWAP mode)
+        - Moves the cursor in a direction if the directional keys are pressed (in SELECT mode)
+        - Enters SWAP mode if the select key is pressed
+        """
         key = self.stdscr.getch()
         if key == ord("q"):
             self.running = False
+        # TODO rm
+        if key == ord("f"):
+            self.animation_explode()
         match self.mode:
             case self.modes.SELECT:
                 if key in KEYBINDS["right"] or key in KEYBINDS["left"]:
@@ -190,8 +201,6 @@ class Board:
                 if key in KEYBINDS["up"] or key in KEYBINDS["down"]:
                     self.swap("U" if key in KEYBINDS["up"] else "D")
                     self.mode = self.modes.SELECT
-
-    # TODO develop
 
     def swap(self, direction: str):
         """
@@ -244,13 +253,13 @@ class Board:
             for col in range(self.WIDTH):
                 # If top and bottom are the equal (vertical row)
                 if self.is_in_map([row - 1, col]) and self.is_in_map([row + 1, col]) and\
-                   self.map[row - 1][col] == self.map[row + 1][col] == self.map[row][col] and self.map[row][col] != -1:
+                   self.map[row - 1][col] == self.map[row + 1][col] == self.map[row][col] and self.map[row][col] != GEM_TYPES.blank:
                     flagged_for_deletion.append([row - 1, col])
                     flagged_for_deletion.append([row, col])
                     flagged_for_deletion.append([row + 1, col])
                 # If left and right are equal (horiz. row)
                 if self.is_in_map([row, col - 1]) and self.is_in_map([row, col + 1]) and\
-                   self.map[row][col - 1] == self.map[row][col + 1] == self.map[row][col] and self.map[row][col] != -1:
+                   self.map[row][col - 1] == self.map[row][col + 1] == self.map[row][col] and self.map[row][col] != GEM_TYPES.blank:
                     flagged_for_deletion.append([row, col - 1])
                     flagged_for_deletion.append([row, col])
                     flagged_for_deletion.append([row, col + 1])
@@ -262,15 +271,14 @@ class Board:
         if len(flagged_for_deletion) > 0:
             # Beep to indicate a match.
             curses.beep()
-            # Make everything negative. This flags that we want to print it inverted.
+            # Make everything negative. This flags that we want to print it inverted. TODO
             for flag in flagged_for_deletion:
-                if self.map[flag[0]][flag[1]] > -10:
+                if self.map[flag[0]][flag[1]] > 0:
                     self.map[flag[0]][flag[1]] *= -1
-                    self.map[flag[0]][flag[1]] -= 10
             self.reprint_board()
             time.sleep(self.WAIT_TIME_ACTION)
         for flag in flagged_for_deletion:
-            self.map[flag[0]][flag[1]] = -1
+            self.map[flag[0]][flag[1]] = GEM_TYPES.blank
         # Check for an end state -- and do something about that.
         self.check_end_state()
         # We're done! Time to make your next move...
@@ -286,8 +294,8 @@ class Board:
         while row >= 0:
             gem_fell = False
             for col in range(self.WIDTH):
-                # note: don't fall -1's
-                if self.map[row][col] != -1:
+                # note: don't fall blank spaces
+                if self.map[row][col] != GEM_TYPES.blank:
                     if self.fall_gem(row, col) == True: gem_fell = True
             if gem_fell: # Reprint/wait only if a gem actually fell
                 fell = True
@@ -302,10 +310,10 @@ class Board:
         while top_empty:
             top_empty = False
             for col in range(self.WIDTH):
-                if self.map[0][col] == -1:
+                if self.map[0][col] == GEM_TYPES.blank:
                     top_empty = True
                     # Generate number between 0 and 6
-                    self.map[0][col] = random.randint(0, 6)
+                    self.map[0][col] = random.randint(GEM_TYPES.diamond, GEM_TYPES.triangle)
                     self.fall_gem(0, col)
         # Returns true if a gem fell
         return fell
@@ -322,9 +330,10 @@ class Board:
                 if self.is_valid_piece(row, column):
                     exists_valid_piece = True
         if not exists_valid_piece:
+            self.animation_explode()
             self.map = []
             for i in range(self.HEIGHT):
-                self.map.append([-1 for i in range(self.WIDTH)])
+                self.map.append([GEM_TYPES.blank for i in range(self.WIDTH)])
 
     def is_valid_piece(self, row, col) -> bool:
         """
@@ -397,12 +406,12 @@ class Board:
 
     def fall_gem(self, row, col) -> bool:
         """
-        Makes a gem "fall" (go down each empty space, or -1)
+        Makes a gem "fall" (go down each empty space, or blank)
         Assumes there is a VALID gem at row, col
         """
-        if row + 1 < self.HEIGHT and self.map[row + 1][col] == -1:
+        if row + 1 < self.HEIGHT and self.map[row + 1][col] == GEM_TYPES.blank:
             self.map[row + 1][col] = self.map[row][col]
-            self.map[row][col] = -1
+            self.map[row][col] = GEM_TYPES.blank
             return True
         else:
             return False
@@ -413,28 +422,68 @@ class Board:
         self.update_status()
         self.update_level_bar()
         self.stdscr.refresh()
+    
+    def animation_explode(self, accel_y = 0.03, velocity=5):
+        """
+        Plays an animation where the whole board is exploding.
+        """
+        allow_input = False
+        self.stdscr.erase()
+        gems_on_screen = True
+        velocities = [[[random.randint(-velocity, velocity), random.randint(-velocity, velocity)] for i in range(self.WIDTH)] for j in range(self.HEIGHT)]
+        winsize = self.stdscr.getmaxyx()
+        t = 0
+        while gems_on_screen:
+            # Assume gems_on_screen is false unless we prove it is true
+            gems_on_screen = False
+            self.stdscr.erase()
+            for row in range(self.HEIGHT):
+                for col in range(self.WIDTH):
+                    # moves cursor
+                    velocities[row][col][0] += accel_y
+                    position = [velocities[row][col][0] * t, velocities[row][col][1] * t]
+                    ncurses_cursor = (
+                        row + floor((winsize[0] / 2) - (self.HEIGHT / 2)) - 1 + int(position[0]),
+                        col*3 + floor((winsize[1] / 2) - (self.WIDTH * 3/2)) + int(position[1]) + 1
+                    )
+                    if winsize[0] > ncurses_cursor[0] >= 0 and winsize[1] > (ncurses_cursor[1]+1) > 0:
+                        gems_on_screen = True
+                        self.stdscr.move(*ncurses_cursor)
+                        # prints gems
+                        gem_int = self.map[row][col]
+                        if gem_int in GEMS:
+                            self.print(
+                                GEMS[gem_int][0],
+                                color=GEMS[gem_int][1],
+                                end=""
+                            )
+            t += 0.05
+            time.sleep(0.01)
+            self.stdscr.refresh()
+        time.sleep(2)
+        allow_input = True
+
 
     def print_board(self):
         """
         Prints the board out. You need a separate function for printing the status.
         :return:
         """
-        # Prints a margin to vertical center the grid.
-        self.print("\n" * floor((self.stdscr.getmaxyx()
-                   [0] / 2) - (self.HEIGHT / 2)), end="")
         for row in range(self.HEIGHT):
-            # Prints a margin before each row to horizontal center the grid (SELF.WIDTH * 3 == 3 characters per column; space, char, space
-            self.print(
-                " " * (floor((self.stdscr.getmaxyx()[1] / 2) - (self.WIDTH * 3/2))), end="")
+            # Moves the cursor to the desired position
+            self.stdscr.move(
+                row + floor((self.stdscr.getmaxyx()[0] / 2) - (self.HEIGHT / 2)) - 1,
+                floor((self.stdscr.getmaxyx()[1] / 2) - (self.WIDTH * 3/2))
+            )
+
             # Prints gems
             for col in range(self.WIDTH):
                 inverted = False
                 gem_int = self.map[row][col]
                 # Checks to see if there is a negative flag saying the number is inverted...
-                if gem_int <= -10:
+                if gem_int < 1:
                     inverted = True
-                    gem_int += 10
-                    gem_int /= -1
+                    gem_int *= -1
                 # Pick a dynamic color per mode, or use the gem's color
                 color = GEMS[gem_int][1] if gem_int in GEMS else None
                 if row == self.cursor[0] and col == self.cursor[1] and self.allow_input:
@@ -452,7 +501,6 @@ class Board:
                     reverse=(
                         row == self.cursor[0] and col == self.cursor[1] and self.allow_input) or inverted
                 )
-            self.print("")
 
     def get_status(self) -> tuple:
         return (str(self.total_score), f"Level {self.level + 1}", self.mode.name if self.mode else " ")
