@@ -21,4 +21,4 @@ except:
 
 # Play cmdjewel!
 with Board() as board:
-   pass 
+   pass

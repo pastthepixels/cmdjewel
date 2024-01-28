@@ -9,8 +9,7 @@ from console import StatusBar, ProgressBar
 
 # Note: Negative numbers are reserved for inverted prints.
 # ID's for each gem type - enum
-GEM_TYPES = IntEnum("GEM_TYPES", ["blank", "diamond", "circle", "square", "kite", "green", "hexagon", "triangle"]) 
-# 
+GEM_TYPES = IntEnum("GEM_TYPES", ["blank", "diamond", "circle", "square", "kite", "green", "hexagon", "triangle"])
 GEMS = {
     # Blank space listed first
     GEM_TYPES.blank: [" ", 1],
