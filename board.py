@@ -10,7 +10,7 @@ from console import StatusBar, ProgressBar
 # Note: Negative numbers are reserved for inverted prints.
 # ID's for each gem type - enum
 GEM_TYPES = IntEnum("GEM_TYPES", ["blank", "diamond", "circle", "square", "kite", "green", "hexagon", "triangle"])
-GEMS = {
+GEMS = { # Can remove
     # Blank space listed first
     GEM_TYPES.blank: [" ", 1],
     # Gems!
@@ -23,7 +23,7 @@ GEMS = {
     GEM_TYPES.triangle: ["▲", 148]
 }
 
-KEYBINDS = {
+KEYBINDS = { # Can remove
     "left": [curses.KEY_LEFT, ord("h")],
     "right": [curses.KEY_RIGHT, ord("l")],
     "up": [curses.KEY_UP, ord("k")],
@@ -33,10 +33,13 @@ KEYBINDS = {
 
 
 class Board:
+    """
+    Board: Game logic for a given board, including Classic and Zen modes.
+    """
     # board vars
     WIDTH = 8
     HEIGHT = 8
-    running = True
+    running = True # <- can remove
     map = []
 
     # game vars
@@ -48,7 +51,6 @@ class Board:
     cursor = [0, 0]
     allow_input = True
     score = 0  # This is just for a level
-    total_score = 0  # This is the score across a game
     level = 0
 
     # statuses
@@ -63,151 +65,38 @@ class Board:
     status_bar = None
     stdscr = None
 
-    def __init__(self):
+    def __init__(self, game):
         self.map = []
         for i in range(self.HEIGHT):
             self.map.append([GEM_TYPES.blank for i in range(self.WIDTH)])
+        self.game = game
 
-    def __enter__(self):
-        # Shortens the curses escape delay
-        os.environ.setdefault('ESCDELAY', '15')
-        # Initializes the main screen/status bar
-        self.stdscr = curses.initscr()
-        # curses.newwin(1, self.stdscr.getmaxyx()[1], curses.LINES - 2, 0)
-        self.level_bar = ProgressBar(
-            screen=self.stdscr, progress=0, foreground_color=3, y=1)
-        # curses.newwin(1, self.stdscr.getmaxyx()[1], curses.LINES - 1, 0)
-        self.status_bar = StatusBar(screen=self.stdscr, y=0)
-        curses.start_color()
-        # You don't have to hit the enter key after inputting characters
-        curses.cbreak()
-        # Don't let characters pressed show back in the terminal
-        curses.noecho()
-        # No cursor. Let us draw it.
-        curses.curs_set(0)
-        # Different way of getting keys that "just works"
-        self.stdscr.keypad(True)
-        # Forgot what this does but we probably need it.
-        self.stdscr.nodelay(True)
-        # Initializes color
-        curses.use_default_colors()
-        for i in range(curses.COLORS):
-            curses.init_pair(i + 1, i, - 1)
-        # for i in range(255):
-        #    self.stdscr.addstr(str(i) + " ", curses.color_pair(i))
-        # Begin in SELECT mode
-        self.mode = self.modes.SELECT
-        # Enter game loop:
-        #   the game runs as fast as possible and gets input (opposed to updating per input)
-        while self.running:
-            try:
-                # Updates the game/main screen
-                self.stdscr.erase()
-                self.update()
-                self.stdscr.refresh()
-            #except curses.error:
-            #    pass
-            except:
-                self.running = False
-                self.__exit__(None, None, None)
-                print(traceback.format_exc())
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.stdscr.keypad(False)
-        curses.nocbreak()
-        curses.echo()
-        curses.endwin()
-
-    def update_status(self):
-        """
-        Updates the status screen.
-        """
-        self.status_bar.set_status_left(" | ".join(self.get_status()[:-1]))
-        self.status_bar.set_status_right(self.get_status()[-1])
-        self.status_bar.update()
-
-    def update_level_bar(self):
-        """
-        Updates the level progress bar.
-        """
-        self.level_bar.set_progress(self.score, self.SCORE_PER_LEVEL)
-        self.level_bar.update()
+    def get_entry(self, row, col):
+        return self.map[row][col]
 
     def update(self):
         """
         Main game loop.
         """
-        # Prints everything
-        self.print_board()
-        self.update_status()
-        self.update_level_bar()
-        # Handles input
-        if self.allow_input:
-            self.handle_input()
-        # Handles mechanics
         # TODO: cool animation as we scramble pieces
-        if self.score >= self.SCORE_PER_LEVEL and self.mode == self.modes.SELECT:
-            self.score = 0
-            self.level += 1
+        #if self.score >= self.SCORE_PER_LEVEL and self.mode == self.modes.SELECT:
+        #    self.level += 1
         self.update_board()
 
-    def print(self, *strings: str, end="\n", color=None, reverse=False):
-        for string in strings:
-            if color is not None:
-                self.stdscr.addstr(str(
-                    string) + end, curses.color_pair(color) + (curses.A_REVERSE if reverse else 0))
-            else:
-                self.stdscr.addstr(str(string) + end,
-                                   curses.A_REVERSE if reverse else 0)
+    def get_level(self):
+        return self.score // self.SCORE_PER_LEVEL
 
-    def handle_input(self):
+    def get_level_progress(self):
+        return self.score % self.SCORE_PER_LEVEL / self.SCORE_PER_LEVEL
+
+    def swap(self, direction: str, cursor: list):
         """
-        Handles all keyboard input, and preforms important operations:
-        - Swaps a selected gem with a gem in a direction if directional keys are pressed (in SWAP mode)
-        - Moves the cursor in a direction if the directional keys are pressed (in SELECT mode)
-        - Enters SWAP mode if the select key is pressed
-        """
-        key = self.stdscr.getch()
-        if key == ord("q"):
-            self.running = False
-        # TODO rm
-        if key == ord("f"):
-            self.animation_explode()
-        match self.mode:
-            case self.modes.SELECT:
-                if key in KEYBINDS["right"] or key in KEYBINDS["left"]:
-                    direction = 1 if key in KEYBINDS["right"] else -1
-                    if self.is_in_map([self.cursor[0], self.cursor[1] + direction]):
-                        self.cursor[1] += direction
-                if key in KEYBINDS["up"] or key in KEYBINDS["down"]:
-                    direction = 1 if key in KEYBINDS["down"] else -1
-                    if self.is_in_map([self.cursor[0] + direction, self.cursor[1]]):
-                        self.cursor[0] += direction
-                # Space to get into select mode.
-                if key in KEYBINDS["select"]:
-                    self.mode = self.modes.SWAP
-                    return
-
-            case self.modes.SWAP:
-                # Escape key returns you -- so does another space
-                if key == 27 or key in KEYBINDS["select"]:
-                    self.mode = self.modes.SELECT
-
-                if key in KEYBINDS["right"] or key in KEYBINDS["left"]:
-                    self.swap("R" if key in KEYBINDS["right"] else "L")
-                    self.mode = self.modes.SELECT
-
-                if key in KEYBINDS["up"] or key in KEYBINDS["down"]:
-                    self.swap("U" if key in KEYBINDS["up"] else "D")
-                    self.mode = self.modes.SELECT
-
-    def swap(self, direction: str):
-        """
-        Swaps two points in the map
+        Swaps two points in the map -- via an i,jth point and a point defined by a movement of 1 from that point.
         :param direction: ["U", "D", "L", "R"]
+        :param cursor: A list consisting of i, j coordinates for the "pivot" point
         :return:
         """
-        cursor_swap = self.cursor.copy()
+        cursor_swap = cursor.copy()
         match direction:
             case "U":
                 cursor_swap[0] -= 1
@@ -222,11 +111,14 @@ class Board:
                 cursor_swap[1] += 1
         # IF the swapped cursor is in the map, and either gem you are swapping forms a match
         if self.is_in_map(cursor_swap) and\
-                (self.is_valid_move(self.cursor, cursor_swap) or self.is_valid_move(cursor_swap, self.cursor)):
-            tmp = self.map[self.cursor[0]][self.cursor[1]]
-            self.map[self.cursor[0]][self.cursor[1]
+                (self.is_valid_move(cursor, cursor_swap) or self.is_valid_move(cursor_swap, cursor)):
+            tmp = self.map[cursor[0]][cursor[1]]
+            self.map[cursor[0]][cursor[1]
                                      ] = self.map[cursor_swap[0]][cursor_swap[1]]
             self.map[cursor_swap[0]][cursor_swap[1]] = tmp
+            return True
+        else:
+            return False
 
     def is_in_map(self, pointyx: list):
         """
@@ -264,7 +156,6 @@ class Board:
                     flagged_for_deletion.append([row, col + 1])
         # Add to the score.
         score = len(flagged_for_deletion) * self.SCORE_MULTIPLIER
-        self.total_score += score
         self.score += score
         # Turn everything we flagged into a blank space int
         if len(flagged_for_deletion) > 0:
@@ -274,12 +165,10 @@ class Board:
             for flag in flagged_for_deletion:
                 if self.map[flag[0]][flag[1]] > 0:
                     self.map[flag[0]][flag[1]] *= -1
-            self.reprint_board()
+            self.game.update_all_windows()
             time.sleep(self.WAIT_TIME_ACTION)
         for flag in flagged_for_deletion:
             self.map[flag[0]][flag[1]] = GEM_TYPES.blank
-        # Check for an end state -- and do something about that.
-        self.check_end_state()
         # We're done! Time to make your next move...
         self.allow_input = True
     
@@ -299,7 +188,7 @@ class Board:
             if gem_fell: # Reprint/wait only if a gem actually fell
                 fell = True
                 row += 1
-                self.reprint_board()
+                self.game.update_all_windows()
                 time.sleep(self.WAIT_TIME_FALL)
             else:
                 # Important for the loop to converge
@@ -317,9 +206,9 @@ class Board:
         # Returns true if a gem fell
         return fell
 
-    def check_end_state(self):
+    def get_game_state(self):
         """
-        Checks if any moves can be made, and if not, regenerates the board.
+        Returns true if the game is still in progress (moves can be made), else false 
         """
         # TODO: add a classic mode
         # If there isn't any more moves to make, refresh the board.
@@ -328,11 +217,7 @@ class Board:
             for column in range(self.WIDTH):
                 if self.is_valid_piece(row, column):
                     exists_valid_piece = True
-        if not exists_valid_piece:
-            self.animation_explode()
-            self.map = []
-            for i in range(self.HEIGHT):
-                self.map.append([GEM_TYPES.blank for i in range(self.WIDTH)])
+        return exists_valid_piece
 
     def is_valid_piece(self, row, col) -> bool:
         """
@@ -415,91 +300,5 @@ class Board:
         else:
             return False
 
-    def reprint_board(self):
-        self.stdscr.erase()
-        self.print_board()
-        self.update_status()
-        self.update_level_bar()
-        self.stdscr.refresh()
-    
-    def animation_explode(self, accel_y = 0.03, velocity=5):
-        """
-        Plays an animation where the whole board is exploding.
-        """
-        allow_input = False
-        self.stdscr.erase()
-        gems_on_screen = True
-        velocities = [[[random.randint(-velocity, velocity), random.randint(-velocity, velocity)] for i in range(self.WIDTH)] for j in range(self.HEIGHT)]
-        winsize = self.stdscr.getmaxyx()
-        t = 0
-        while gems_on_screen:
-            # Assume gems_on_screen is false unless we prove it is true
-            gems_on_screen = False
-            self.stdscr.erase()
-            for row in range(self.HEIGHT):
-                for col in range(self.WIDTH):
-                    # moves cursor
-                    velocities[row][col][0] += accel_y
-                    position = [velocities[row][col][0] * t, velocities[row][col][1] * t]
-                    ncurses_cursor = (
-                        row + floor((winsize[0] / 2) - (self.HEIGHT / 2)) - 1 + int(position[0]),
-                        col*3 + floor((winsize[1] / 2) - (self.WIDTH * 3/2)) + int(position[1]) + 1
-                    )
-                    if winsize[0] > ncurses_cursor[0] >= 0 and winsize[1] > (ncurses_cursor[1]+1) > 0:
-                        gems_on_screen = True
-                        self.stdscr.move(*ncurses_cursor)
-                        # prints gems
-                        gem_int = self.map[row][col]
-                        if gem_int in GEMS:
-                            self.print(
-                                GEMS[gem_int][0],
-                                color=GEMS[gem_int][1],
-                                end=""
-                            )
-            t += 0.05
-            time.sleep(0.01)
-            self.stdscr.refresh()
-        time.sleep(2)
-        allow_input = True
-
-
-    def print_board(self):
-        """
-        Prints the board out. You need a separate function for printing the status.
-        :return:
-        """
-        for row in range(self.HEIGHT):
-            # Moves the cursor to the desired position
-            self.stdscr.move(
-                row + floor((self.stdscr.getmaxyx()[0] / 2) - (self.HEIGHT / 2)) - 1,
-                floor((self.stdscr.getmaxyx()[1] / 2) - (self.WIDTH * 3/2))
-            )
-
-            # Prints gems
-            for col in range(self.WIDTH):
-                inverted = False
-                gem_int = self.map[row][col]
-                # Checks to see if there is a negative flag saying the number is inverted...
-                if gem_int < 1:
-                    inverted = True
-                    gem_int *= -1
-                # Pick a dynamic color per mode, or use the gem's color
-                color = GEMS[gem_int][1] if gem_int in GEMS else None
-                if row == self.cursor[0] and col == self.cursor[1] and self.allow_input:
-                    match self.mode:
-                        case self.modes.SELECT:
-                            color = None
-
-                        case self.modes.SWAP:
-                            color = 2
-                self.print(
-                    " " + str(GEMS[gem_int][0]
-                              if gem_int in GEMS else gem_int),
-                    end=" ",
-                    color=color,
-                    reverse=(
-                        row == self.cursor[0] and col == self.cursor[1] and self.allow_input) or inverted
-                )
-
     def get_status(self) -> tuple:
-        return (str(self.total_score), f"Level {self.level + 1}", self.mode.name if self.mode else " ")
+        return (str(self.score), f"Level {self.get_level() + 1}", self.mode.name if self.mode else " ")

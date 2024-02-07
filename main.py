@@ -1,4 +1,4 @@
-from board import Board
+from game import Game
 from importlib import import_module
 import os
 
@@ -16,9 +16,9 @@ try:
     pygame.mixer.music.load("beyond_the_network.it")
     pygame.mixer.music.play()
 except:
-    print("PyGame or libopenmpt found. To play music, install PyGame with pip.")
+    print("PyGame or libopenmpt not found. To play music, install PyGame with pip.")
     print("On some systems, you might have to also install OpenMPT -- specifically libmodplug.")
 
 # Play cmdjewel!
-with Board() as board:
-   pass
+with Game() as game:
+    pass
