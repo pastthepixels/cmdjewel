@@ -66,9 +66,7 @@ class Board:
     stdscr = None
 
     def __init__(self, game):
-        self.map = []
-        for i in range(self.HEIGHT):
-            self.map.append([GEM_TYPES.blank for i in range(self.WIDTH)])
+        self.init_map()
         self.game = game
 
     def get_entry(self, row, col):
@@ -88,6 +86,12 @@ class Board:
 
     def get_level_progress(self):
         return self.score % self.SCORE_PER_LEVEL / self.SCORE_PER_LEVEL
+
+    def init_map(self):
+        self.map = []
+        for i in range(self.HEIGHT):
+            self.map.append([GEM_TYPES.blank for i in range(self.WIDTH)])
+
 
     def swap(self, direction: str, cursor: list):
         """
