@@ -173,7 +173,12 @@ class Game:
         self.update_input()
         # Updates board.
         if self.board:
+            previous_level = self.board.get_level()
             self.board.update()
+            # Leveling
+            if self.board.get_level() > previous_level:
+                self.animation_warp()
+            # Losing
             if self.board.get_game_state() == False:
                 self.animation_explode()
                 self.board = None

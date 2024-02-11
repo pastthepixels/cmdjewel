@@ -76,9 +76,6 @@ class Board:
         """
         Main game loop.
         """
-        # TODO: cool animation as we scramble pieces
-        #if self.score >= self.SCORE_PER_LEVEL and self.mode == self.modes.SELECT:
-        #    self.level += 1
         self.update_board()
 
     def get_level(self):
