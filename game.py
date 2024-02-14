@@ -329,24 +329,22 @@ class Game:
         time.sleep(2)
         self.taking_input = True
 
-    def animation_warp(self, duration_ticks = 100):
+    def animation_warp(self, duration_ticks = 400):
         self.taking_input = False
         self.stdscr.erase()
         # 1. Animate circles and pull gems in center.
         # 1a. First we want to define some variables that will help us make the gems spin
-        CIRCLE_GROWTH_SPEED = 0.03
-        ROTATION_SPEED = 0.8
-        GRAVITY = 0.3
-        # 2D array, an element is a vector that holds [radius, initial rotation, radial velocity]
+        CIRCLE_GROWTH_SPEED = 0.01
+        GRAVITY = 1
+        DELTA_TIME_SEC = 0.01
+        # 2D array, an element is a vector that holds [position:Vector, velocity:Vector]
         positions = []
         for row in range(self.board.HEIGHT):
             positions.append([])
             for col in range(self.board.WIDTH):
-                pos_rel_center = [self.get_gem_position(row, col)[0] - self.stdscr.getmaxyx()[0]/2, self.get_gem_position(row, col)[1] - self.stdscr.getmaxyx()[1]/2]
                 positions[row].append([
-                    sqrt(pos_rel_center[0] ** 2 + pos_rel_center[1] ** 2),
-                    atan(pos_rel_center[0]/pos_rel_center[1]) - (pi if pos_rel_center[1] < 0 else 0),
-                    random.random() * 0.2
+                    self.get_gem_position(row, col),
+                    [random.randint(-1, 1), random.randint(-1, 1)]
                 ])
         # 1b. Next we create the while loop
         circles = [[(self.stdscr.getmaxyx()[0]//2, self.stdscr.getmaxyx()[1]//2), 0, 0]]
@@ -365,39 +363,52 @@ class Game:
                 circle = circles[i]
                 if circle[1] < max_radius:
                     circle[1] += max_radius * CIRCLE_GROWTH_SPEED
-                if i == len(circles) - 1 or circle[1] > circles[i + 1][1]:
                     self.draw_circle(circle[0], floor(circle[1]), color=circle[2])
+                else:
+                    for x in range(winsize[1]):
+                        self.line([0, x], [winsize[0] - 1, x], color=circle[2])
 
             if circles[-1][1] >= max_radius / 2 and circles[-1][2] != -1:
                 circles.append([
-                    (circles[-1][0][0], circles[-1][0][1]),
+                    (circles[-1][0][0] + int(3 * sin(time_ticks)), circles[-1][0][1] + int(3 * cos(time_ticks))),
                     0,
                     circles[-1][2] + 1 if time_ticks < duration_ticks else -1
                 ])
+                # Finds the next max radius
+                max_radius = max(
+                    sqrt((winsize[0] - circles[-1][0][0]) ** 2 + (winsize[1] - circles[-1][0][1]) ** 2),
+                    sqrt((0 -          circles[-1][0][0]) ** 2 + (winsize[1] - circles[-1][0][1]) ** 2),
+                    sqrt((winsize[0] - circles[-1][0][0]) ** 2 + (0 -          circles[-1][0][1]) ** 2),
+                    sqrt((0 -          circles[-1][0][0]) ** 2 + (0 -          circles[-1][0][1]) ** 2)
+                )
+                if len(circles) >= 4:
+                    circles.pop(0)
             # Otherwise, print the board, then do some cool physics to it.
             for row in range(self.board.HEIGHT):
                 for col in range(self.board.WIDTH):
-                    if positions[row][col][0] > GRAVITY:
-                        # moves cursor (not game cursor)
-                        ncurses_cursor = [
-                            sin(ROTATION_SPEED * (1/positions[row][col][0]) * time_ticks + positions[row][col][1]) * positions[row][col][0] + winsize[0]/2,
-                            cos(ROTATION_SPEED * (1/positions[row][col][0]) * time_ticks + positions[row][col][1]) * positions[row][col][0] + winsize[1]/2,
-                        ]
-                        positions[row][col][0] -= GRAVITY
-                        # prints gems
-                        gem_int = self.board.get_entry(row, col)
-                        if gem_int in GEMS:
-                            self.print(
-                                GEMS[gem_int][0],
-                                color=GEMS[gem_int][1],
-                                end="",
-                                coords=[floor(ncurses_cursor[0]), floor(ncurses_cursor[1])]
-                            )
-                    else:
-                        self.board.map[row][col] = GEM_TYPES.blank
+                    # moves cursor (not game cursor)
+                    origin = circles[-1][0]
+                    r = sqrt(pow(positions[row][col][0][0] - origin[0], 2) + pow(positions[row][col][0][1] - origin[1], 2))
+                    if r < 5:
+                        positions[row][col][1][0] -= GRAVITY * (positions[row][col][0][0] - origin[0])/r
+                        positions[row][col][1][1] -= GRAVITY * (positions[row][col][0][1] - origin[1])/r
+                    elif r >= 5:
+                        positions[row][col][1][0] += GRAVITY * (r/max_radius) * (positions[row][col][0][0] - origin[0])/r
+                        positions[row][col][1][1] += GRAVITY * (r/max_radius) * (positions[row][col][0][1] - origin[1])/r
+                    positions[row][col][0][0] += positions[row][col][1][0] * DELTA_TIME_SEC
+                    positions[row][col][0][1] += positions[row][col][1][1] * DELTA_TIME_SEC
+                    # prints gems
+                    gem_int = self.board.get_entry(row, col)
+                    if gem_int in GEMS and not (circles[-1][2] == -1 and r < 2):
+                        self.print(
+                            GEMS[gem_int][0],
+                            color=GEMS[gem_int][1],
+                            end="",
+                            coords=[floor(positions[row][col][0][0]), floor(positions[row][col][0][1])]
+                        )
 
             # Done.
-            time.sleep(0.05)
+            time.sleep(DELTA_TIME_SEC)
             time_ticks += 1
             self.stdscr.refresh()
         # Done.
