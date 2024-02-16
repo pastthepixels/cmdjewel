@@ -126,6 +126,17 @@ class Game:
         Draws a line from an origin vector to a targt vector
         Implemented from the Wikipedia article on Bresenham's line algorithm
         """
+        # Occlude (don't draw) invisible lines
+        if (target[1] > self.stdscr.getmaxyx()[1] and origin[1] > self.stdscr.getmaxyx()[1]) or \
+           (target[0] > self.stdscr.getmaxyx()[0] and origin[0] > self.stdscr.getmaxyx()[0]) or \
+           (target[1] < 0 and origin[1] < 0) or \
+           (target[0] < 0 and origin[0] < 0):
+            return
+        if target[0] > self.stdscr.getmaxyx()[0]:
+            target[0] = self.stdscr.getmaxyx()[0]
+        if target[1] > self.stdscr.getmaxyx()[1]:
+            target[1] = self.stdscr.getmaxyx()[1]
+        # Draw a line
         reverse = True
         if color == -1:
             color = 0
@@ -329,14 +340,13 @@ class Game:
         time.sleep(2)
         self.taking_input = True
 
-    def animation_warp(self, duration_ticks = 400):
+    def animation_warp(self, duration_sec = 5, frame_rate=0.01):
         self.taking_input = False
         self.stdscr.erase()
         # 1. Animate circles and pull gems in center.
         # 1a. First we want to define some variables that will help us make the gems spin
-        CIRCLE_GROWTH_SPEED = 0.01
+        CIRCLE_GROWTH_SPEED = 0.6
         GRAVITY = 1
-        DELTA_TIME_SEC = 0.01
         # 2D array, an element is a vector that holds [position:Vector, velocity:Vector]
         positions = []
         for row in range(self.board.HEIGHT):
@@ -352,7 +362,10 @@ class Game:
         max_radius = sqrt(winsize[0]**2 + winsize[1] ** 2) / 2
         time_ticks = 1
         running = True
+        time_animation_initial = time.time()
+        delta = frame_rate
         while(running):
+            time_initial = time.time()
             # If the gems are on the screen, or the last circle is still expanding, keep going
             # Note that here and later on we use the color == the clear color to identify the last circle
             running = not (circles[-1][2] == -1 and circles[-1][1] >= max_radius)
@@ -362,7 +375,7 @@ class Game:
             for i in range(len(circles)):
                 circle = circles[i]
                 if circle[1] < max_radius:
-                    circle[1] += max_radius * CIRCLE_GROWTH_SPEED
+                    circle[1] += max_radius * CIRCLE_GROWTH_SPEED * delta
                     self.draw_circle(circle[0], floor(circle[1]), color=circle[2])
                 else:
                     for x in range(winsize[1]):
@@ -372,7 +385,7 @@ class Game:
                 circles.append([
                     (circles[-1][0][0] + int(3 * sin(time_ticks)), circles[-1][0][1] + int(3 * cos(time_ticks))),
                     0,
-                    circles[-1][2] + 1 if time_ticks < duration_ticks else -1
+                    circles[-1][2] + 1 if time.time()-time_animation_initial < duration_sec else -1
                 ])
                 # Finds the next max radius
                 max_radius = max(
@@ -395,8 +408,8 @@ class Game:
                     elif r >= 5:
                         positions[row][col][1][0] += GRAVITY * (r/max_radius) * (positions[row][col][0][0] - origin[0])/r
                         positions[row][col][1][1] += GRAVITY * (r/max_radius) * (positions[row][col][0][1] - origin[1])/r
-                    positions[row][col][0][0] += positions[row][col][1][0] * DELTA_TIME_SEC
-                    positions[row][col][0][1] += positions[row][col][1][1] * DELTA_TIME_SEC
+                    positions[row][col][0][0] += positions[row][col][1][0] * delta
+                    positions[row][col][0][1] += positions[row][col][1][1] * delta
                     # prints gems
                     gem_int = self.board.get_entry(row, col)
                     if gem_int in GEMS and not (circles[-1][2] == -1 and r < 2):
@@ -408,8 +421,15 @@ class Game:
                         )
 
             # Done.
-            time.sleep(DELTA_TIME_SEC)
+            frame_time = time.time() - time_initial
+            delta = max(frame_rate, frame_time)
+            if frame_time < frame_rate:
+                time.sleep(frame_rate - frame_time)
             time_ticks += 1
+
+            # Print FPS TODO remove
+            self.print("%.2f" % frame_time, coords=[0, 0], end="")
+
             self.stdscr.refresh()
         # Done.
         self.taking_input = True
