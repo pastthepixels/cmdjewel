@@ -5,12 +5,11 @@ import random
 import curses
 import time
 import os
+from algebra import *
 from enum import Enum
 from math import floor, sqrt, sin, cos, atan, pi
 from board import Board, GEM_TYPES
 from console import StatusBar, ProgressBar
-
-type Vector = list[float]
 
 ANIM_TIME_FALL = 0.05
 ANIM_TIME_ACTION = 0.5
@@ -110,7 +109,7 @@ class Game:
         for string in strings:
             try:
                 if coords is not None:
-                    self.stdscr.move(*coords)
+                    self.stdscr.move(coords[0], coords[1])
                 if color is not None:
                     self.stdscr.addstr(str(
                         string) + end, curses.color_pair(color) + (curses.A_REVERSE if reverse else 0))
@@ -121,7 +120,7 @@ class Game:
                 if not safe:
                     raise err
 
-    def line(self, origin : Vector, target : Vector, color : int = 0):
+    def line(self, origin : Vector2, target : Vector2, color : int = 0):
         """
         Draws a line from an origin vector to a targt vector
         Implemented from the Wikipedia article on Bresenham's line algorithm
@@ -148,22 +147,22 @@ class Game:
         sy = 1 if origin[0] < target[0] else -1
         error = dx + dy
 
+
         while True:
             self.print(" ", end="", color=color, reverse=reverse, coords=origin)
-            if origin[1] == target[1] and origin[0] == target[0]:
+            if origin == target:
                 break
             e2 = 2 * error
             if e2 >= dy:
-                if origin[1] == target[1]:
+                if origin.x == target.x:
                     break
                 error = error + dy
-                origin[1] += sx
+                origin.x += sx
             if e2 <= dx:
-                if origin[0] == target[0]:
+                if origin.y == target.y:
                     break
                 error = error + dx
-                origin[0] += sy
-
+                origin.y += sy
 
 
     # Commonly used functions
@@ -340,35 +339,21 @@ class Game:
         time.sleep(2)
         self.taking_input = True
 
-    def animation_warp(self, duration_sec = 5, frame_rate=0.01):
+    def animation_warp(self, duration_sec = 5, frame_rate=0.01, CIRCLE_GROWTH_SPEED=0.6, GRAVITY=1):
         self.taking_input = False
-        self.stdscr.erase()
         # 1. Animate circles and pull gems in center.
-        # 1a. First we want to define some variables that will help us make the gems spin
-        CIRCLE_GROWTH_SPEED = 0.6
-        GRAVITY = 1
         # 2D array, an element is a vector that holds [position:Vector, velocity:Vector]
-        positions = []
-        for row in range(self.board.HEIGHT):
-            positions.append([])
-            for col in range(self.board.WIDTH):
-                positions[row].append([
-                    self.get_gem_position(row, col),
-                    [random.randint(-1, 1), random.randint(-1, 1)]
-                ])
+        positions = [[[self.get_gem_position(i, j), Vector2(random.randint(-1, 1), random.randint(-1, 1)) ] for j in range(self.board.WIDTH)] for i in range(self.board.HEIGHT)]
         # 1b. Next we create the while loop
-        circles = [[(self.stdscr.getmaxyx()[0]//2, self.stdscr.getmaxyx()[1]//2), 0, 0]]
-        winsize = self.stdscr.getmaxyx()
-        max_radius = sqrt(winsize[0]**2 + winsize[1] ** 2) / 2
-        time_ticks = 1
-        running = True
+        circles = [[Vector2(self.stdscr.getmaxyx()[0]//2, self.stdscr.getmaxyx()[1]//2), 0, 0]]
+        winsize = Vector2.fromList(self.stdscr.getmaxyx())
+        max_radius = winsize.length() / 2
         time_animation_initial = time.time()
         delta = frame_rate
-        while(running):
+        while(not (circles[-1][2] == -1 and circles[-1][1] >= max_radius)):
             time_initial = time.time()
             # If the gems are on the screen, or the last circle is still expanding, keep going
             # Note that here and later on we use the color == the clear color to identify the last circle
-            running = not (circles[-1][2] == -1 and circles[-1][1] >= max_radius)
             # Erase
             self.stdscr.erase()
             # Draw circles
@@ -379,20 +364,19 @@ class Game:
                     self.draw_circle(circle[0], floor(circle[1]), color=circle[2])
                 else:
                     for x in range(winsize[1]):
-                        self.line([0, x], [winsize[0] - 1, x], color=circle[2])
-
+                        self.line(Vector2(0, x), Vector2(winsize[0] - 1, x), color=circle[2])
             if circles[-1][1] >= max_radius / 2 and circles[-1][2] != -1:
                 circles.append([
-                    (circles[-1][0][0] + int(3 * sin(time_ticks)), circles[-1][0][1] + int(3 * cos(time_ticks))),
+                    circles[-1][0] + Vector2(int(3 * sin(time.time() - time_animation_initial)), int(3 * cos(time.time() - time_animation_initial))),
                     0,
                     circles[-1][2] + 1 if time.time()-time_animation_initial < duration_sec else -1
                 ])
                 # Finds the next max radius
                 max_radius = max(
-                    sqrt((winsize[0] - circles[-1][0][0]) ** 2 + (winsize[1] - circles[-1][0][1]) ** 2),
-                    sqrt((0 -          circles[-1][0][0]) ** 2 + (winsize[1] - circles[-1][0][1]) ** 2),
-                    sqrt((winsize[0] - circles[-1][0][0]) ** 2 + (0 -          circles[-1][0][1]) ** 2),
-                    sqrt((0 -          circles[-1][0][0]) ** 2 + (0 -          circles[-1][0][1]) ** 2)
+                    circles[-1][0].distanceTo(winsize),
+                    circles[-1][0].distanceTo(Vector2(0, winsize[1])),
+                    circles[-1][0].distanceTo(Vector2(0, 0)),
+                    circles[-1][0].distanceTo(Vector2(winsize[0], 0))
                 )
                 if len(circles) >= 4:
                     circles.pop(0)
@@ -400,16 +384,12 @@ class Game:
             for row in range(self.board.HEIGHT):
                 for col in range(self.board.WIDTH):
                     # moves cursor (not game cursor)
-                    origin = circles[-1][0]
-                    r = sqrt(pow(positions[row][col][0][0] - origin[0], 2) + pow(positions[row][col][0][1] - origin[1], 2))
-                    if r < 5:
-                        positions[row][col][1][0] -= GRAVITY * (positions[row][col][0][0] - origin[0])/r
-                        positions[row][col][1][1] -= GRAVITY * (positions[row][col][0][1] - origin[1])/r
-                    elif r >= 5:
-                        positions[row][col][1][0] += GRAVITY * (r/max_radius) * (positions[row][col][0][0] - origin[0])/r
-                        positions[row][col][1][1] += GRAVITY * (r/max_radius) * (positions[row][col][0][1] - origin[1])/r
-                    positions[row][col][0][0] += positions[row][col][1][0] * delta
-                    positions[row][col][0][1] += positions[row][col][1][1] * delta
+                    r = positions[row][col][0].distanceTo(circles[-1][0])
+                    if r >= 5 or circles[-1][2] == -1:
+                        positions[row][col][1] += (positions[row][col][0] - circles[-1][0]) * (1/r) * GRAVITY * (r/max_radius)
+                    else:
+                        positions[row][col][1] -= (positions[row][col][0] - circles[-1][0]) * (1/r) * GRAVITY
+                    positions[row][col][0] += positions[row][col][1] * delta
                     # prints gems
                     gem_int = self.board.get_entry(row, col)
                     if gem_int in GEMS and not (circles[-1][2] == -1 and r < 2):
@@ -417,7 +397,7 @@ class Game:
                             GEMS[gem_int][0],
                             color=GEMS[gem_int][1],
                             end="",
-                            coords=[floor(positions[row][col][0][0]), floor(positions[row][col][0][1])]
+                            coords=floor(positions[row][col][0])
                         )
 
             # Done.
@@ -425,21 +405,17 @@ class Game:
             delta = max(frame_rate, frame_time)
             if frame_time < frame_rate:
                 time.sleep(frame_rate - frame_time)
-            time_ticks += 1
-
-            # Print FPS TODO remove
-            self.print("%.2f" % frame_time, coords=[0, 0], end="")
 
             self.stdscr.refresh()
         # Done.
         self.taking_input = True
 
-    def get_gem_position(self, i, j) -> Vector:
+    def get_gem_position(self, i, j) -> Vector2:
         """
         Gets the position on the screen that a board piece is printed to.
         """
-        return [i + floor((self.stdscr.getmaxyx()[0] / 2) - (self.board.HEIGHT / 2)) - 1,
-                j*3 + floor((self.stdscr.getmaxyx()[1] / 2) - (self.board.WIDTH * 3/2)) + 1]
+        return Vector2(i + floor((self.stdscr.getmaxyx()[0] / 2) - (self.board.HEIGHT / 2)) - 1,
+                j*3 + floor((self.stdscr.getmaxyx()[1] / 2) - (self.board.WIDTH * 3/2)) + 1)
 
 
     # Board prints
@@ -496,23 +472,23 @@ class Game:
         while(not (x < y)):
             # Draws points
             self.line(
-                [origin[0] + y, origin[1] + x],
-                [origin[0] - y, origin[1] + x],
+                Vector2(origin[0] + y, origin[1] + x),
+                Vector2(origin[0] - y, origin[1] + x),
                 color=color
             )
             self.line(
-                [origin[0] + y, origin[1] - x],
-                [origin[0] - y, origin[1] - x],
+                Vector2(origin[0] + y, origin[1] - x),
+                Vector2(origin[0] - y, origin[1] - x),
                 color=color
             )
             self.line(
-                [origin[0] + x, origin[1] + y],
-                [origin[0] - x, origin[1] + y],
+                Vector2(origin[0] + x, origin[1] + y),
+                Vector2(origin[0] - x, origin[1] + y),
                 color=color
             )
             self.line(
-                [origin[0] + x, origin[1] - y],
-                [origin[0] - x, origin[1] - y],
+                Vector2(origin[0] + x, origin[1] - y),
+                Vector2(origin[0] - x, origin[1] - y),
                 color=color
             )
             # Increments
