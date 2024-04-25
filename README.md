@@ -7,7 +7,7 @@ cmdjewel is a terminal match-3 game inspired by Bejeweled, written with Python a
 
 # Running
 
-cmdjewel is a Python project. To run it, extract the source code to a folder, ensure you have Python installed, and inside the directory, run python . in a terminal. You can optionally install PyGame to play soundtrack.
+cmdjewel is a Python project. To run it, extract the source code to a folder, ensure you have Python installed, and inside the directory, run `python .` in a terminal. You can optionally install PyGame to play soundtrack.
 
 cmdjewel also requires that you have the `curses` module for Python. On Linux, this is installed by default. If you're on Windows, you have to install [windows-curses](https://github.com/zephyrproject-rtos/windows-curses) with pip.
 
