@@ -2,6 +2,11 @@
 // TODO: remove the below line once the implementation is complete.
 #![allow(dead_code, unused_variables)]
 
+use rand::{
+    distributions::{Distribution, Standard},
+    Rng,
+};
+
 // Specifies how much points you get for each gem successfully swapped.
 const POINTS_SWAP: u8 = 30;
 
@@ -9,7 +14,7 @@ const POINTS_SWAP: u8 = 30;
 const POINTS_LEVEL: u32 = 2000;
 
 /// Types of gems to use.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Gems {
     Empty,
     Blue,
@@ -21,9 +26,23 @@ pub enum Gems {
     Purple,
 }
 
+impl Distribution<Gems> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Gems {
+        match rng.gen_range(0..=6) {
+            0 => Gems::Blue,
+            1 => Gems::White,
+            2 => Gems::Red,
+            3 => Gems::Yellow,
+            4 => Gems::Green,
+            5 => Gems::Orange,
+            _ => Gems::Purple,
+        }
+    }
+}
+
 /// Specifies a 2D x,y point
 #[derive(Copy, Clone)]
-pub struct Point(usize, usize);
+pub struct Point(pub usize, pub usize);
 
 impl std::ops::Add<Point> for Point {
     type Output = Self;
@@ -42,6 +61,7 @@ impl std::ops::Sub<Point> for Point {
 }
 
 /// Specifies adjacent directions
+#[derive(PartialEq, Eq)]
 pub enum Direction {
     Left,
     Right,
@@ -99,7 +119,7 @@ impl Board {
                 // 3. Add corresponding gems, to the *top*, but only if gems don't already exist there.
                 if let Gems::Empty = self.data[row_idx * self.get_width() + i] {
                     if let Gems::Empty = self.data[i] {
-                        self.data[i] = Gems::Blue; // TODO: random generation, also nested ifs; good idea?
+                        self.data[i] = rand::random(); // TODO: nested ifs; good idea?
                     }
                 }
             }
@@ -126,13 +146,12 @@ impl Board {
 
     /// Swaps a gem with a gem in an adjacent direction, which points from the destination from the cursor. **Wrapper for private Board.swap.**
     pub fn swap(&mut self, direction: Direction) {
-        let destination;
-        match direction {
-            Direction::Left => destination = self.cursor + Point(1, 0),
-            Direction::Right => destination = self.cursor - Point(1, 0),
-            Direction::Up => destination = self.cursor - Point(0, 1),
-            Direction::Down => destination = self.cursor + Point(0, 1),
-        }
+        let destination = match direction {
+            Direction::Left => self.cursor - Point(1, 0),
+            Direction::Right => self.cursor + Point(1, 0),
+            Direction::Up => self.cursor - Point(0, 1),
+            Direction::Down => self.cursor + Point(0, 1),
+        };
         self.swap_explicit(self.cursor.clone(), destination)
     }
 
@@ -143,8 +162,8 @@ impl Board {
 
     /// Swaps a gem with any other gem. `source` and `destination` are 2d coordinates.
     pub fn swap_explicit(&mut self, source: Point, destination: Point) {
-        let destination_index = destination.1 * self.get_width() + destination.0;
-        let source_index = source.1 * self.get_width() + source.0;
+        let destination_index = self.point_to_index(destination);
+        let source_index = self.point_to_index(source);
         // Stores a to be swapped value in memory.
         let temp = self.data[destination_index];
         // Swaps two things
@@ -160,46 +179,136 @@ impl Board {
     /// Finds all gems that match and returns their positions in the board.
     /// This can be used as a "dry run" to highlight any gems that have been matched.
     pub fn get_matching_gems(&self) -> Vec<Point> {
-        todo!()
+        let mut valid_gems: Vec<Point> = Vec::new();
+        for i in 0..self.data.len() {
+            let point = self.index_to_point(i);
+            if self.data[i] != Gems::Empty && self.is_matching_gem(self.data.as_ref(), point) {
+                valid_gems.push(point);
+            }
+        }
+        valid_gems
     }
 
     /// Finds all matching gems, and then:
     /// - Removes them, replacing them with empty spaces.
     /// - Adds points for each matching gem.
     /// - Adds special gems if applicable.
-    pub fn update_matching_gems(&self) {
-        todo!()
+    pub fn update_matching_gems(&mut self) {
+        self.get_matching_gems().iter().for_each(|point| {
+            self.data[self.point_to_index(*point)] = Gems::Empty;
+        })
     }
 
     /// Returns true if you can make a move on the board.
     pub fn is_valid(&self) -> bool {
-        todo!()
+        for i in 0..self.data.len() {
+            let point = self.index_to_point(i);
+            if self.data[i] != Gems::Empty && self.is_valid_gem(point) {
+                return true;
+            }
+        }
+        false
     }
 
     /// Returns true if you can make a move on a spot.
     pub fn is_valid_gem(&self, point: Point) -> bool {
         // 1. If we swapped the piece, would we swap it outside of the board? Check each direction to make sure you even *can* swap the piece.
-        todo!()
+        self.is_valid_move(point, Direction::Left)
+            || self.is_valid_move(point, Direction::Right)
+            || self.is_valid_move(point, Direction::Up)
+            || self.is_valid_move(point, Direction::Down)
     }
 
     /// Returns true if you can swap a gem, given the gem and direction of swappage.
     pub fn is_valid_move(&self, point: Point, direction: Direction) -> bool {
-        // 1. Copy the board, but swap the pieces in here. Check if the gem has:
-        //    - Two pieces to its left/right
-        //    - Two pieces above it/below it
-        //    - One piece on either side horizontally/vertically
-        todo!()
+        // Ensure that we aren't subtracting from a (0,0)
+        if point.0 == 0 && direction == Direction::Left
+            || point.1 == 0 && direction == Direction::Up
+        {
+            false
+        } else {
+            // Store the destination coordinates
+            let destination = match direction {
+                Direction::Left => point - Point(1, 0),
+                Direction::Right => point + Point(1, 0),
+                Direction::Up => point - Point(0, 1),
+                Direction::Down => point + Point(0, 1),
+            };
+            // 1. Check if the cursor and destination are in the map.
+            if self.is_in_map(self.cursor) && self.is_in_map(destination) {
+                // 2. Copy the board
+                let mut data_copy = self.data.clone();
+                // 3. Swap the gems in this board.
+                let destination_index = self.point_to_index(destination);
+                let source_index = self.point_to_index(point);
+                data_copy[destination_index] = self.data[source_index];
+                data_copy[source_index] = self.data[destination_index];
+                self.is_matching_gem(data_copy.as_ref(), destination)
+            } else {
+                false
+            }
+        }
+    }
+
+    /// Returns true if a gem is matching.
+    /// Check if the gem has:
+    ///    - Two pieces to its left/right
+    ///    - Two pieces above it/below it
+    ///    - One piece on either side horizontally/vertically
+    /// Two pieces to the left
+    pub fn is_matching_gem(&self, data: &[Gems], point: Point) -> bool {
+        let point_index = self.point_to_index(point);
+        if point.0 >= 2
+            && data[self.point_to_index(point - Point(1, 0))] == data[point_index]
+            && data[self.point_to_index(point - Point(2, 0))] == data[point_index]
+        {
+            true
+        // Two pieces to the right
+        } else if self.is_in_map(point + Point(2, 0))
+            && data[self.point_to_index(point + Point(1, 0))] == data[point_index]
+            && data[self.point_to_index(point + Point(2, 0))] == data[point_index]
+        {
+            true
+        // Two pieces below it
+        } else if self.is_in_map(point + Point(0, 2))
+            && data[self.point_to_index(point + Point(0, 1))] == data[point_index]
+            && data[self.point_to_index(point + Point(0, 2))] == data[point_index]
+        {
+            true
+        // Two pieces above it
+        } else if point.1 >= 2
+            && data[self.point_to_index(point - Point(0, 1))] == data[point_index]
+            && data[self.point_to_index(point - Point(0, 2))] == data[point_index]
+        {
+            true
+        // Horizontal middle
+        } else if point.0 >= 1
+            && self.is_in_map(point + Point(1, 0))
+            && data[self.point_to_index(point - Point(1, 0))] == data[point_index]
+            && data[self.point_to_index(point + Point(1, 0))] == data[point_index]
+        {
+            true
+        // Vertical middle
+        } else if point.1 >= 1
+            && self.is_in_map(point - Point(0, 1))
+            && self.is_in_map(point + Point(0, 1))
+            && data[self.point_to_index(point - Point(0, 1))] == data[point_index]
+            && data[self.point_to_index(point + Point(0, 1))] == data[point_index]
+        {
+            true
+        } else {
+            false
+        }
     }
 
     /// Moves the cursor by 1 in an adjacent direction to it.
     pub fn move_cursor(&mut self, direction: Direction) {
-        let destination;
-        match direction {
-            Direction::Left => destination = self.cursor + Point(1, 0),
-            Direction::Right => destination = self.cursor - Point(1, 0),
-            Direction::Up => destination = self.cursor - Point(0, 1),
-            Direction::Down => destination = self.cursor + Point(0, 1),
-        }
+        let destination = match direction {
+            Direction::Left => self.cursor - Point(1, 0),
+            Direction::Right => self.cursor + Point(1, 0),
+            Direction::Up => self.cursor - Point(0, 1),
+            Direction::Down => self.cursor + Point(0, 1),
+        };
         if self.is_in_map(destination) {
             self.cursor = destination;
         }
@@ -213,5 +322,16 @@ impl Board {
     /// Returns a reference to self.data
     pub fn as_ref(&self) -> &[Gems] {
         self.data.as_ref()
+    }
+
+    /// Converts a Point to an index in self.data.
+    pub fn point_to_index(&self, point: Point) -> usize {
+        point.1 * self.get_width() + point.0
+    }
+
+    /// Converts an index in self.data to a Point.
+    pub fn index_to_point(&self, index: usize) -> Point {
+        let row = index / self.get_width();
+        Point(index - row * self.get_width(), row)
     }
 }
