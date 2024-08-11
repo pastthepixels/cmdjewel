@@ -61,7 +61,7 @@ impl std::ops::Sub<Point> for Point {
 }
 
 /// Specifies adjacent directions
-#[derive(PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Direction {
     Left,
     Right,
@@ -243,7 +243,9 @@ impl Board {
                 let source_index = self.point_to_index(point);
                 data_copy[destination_index] = self.data[source_index];
                 data_copy[source_index] = self.data[destination_index];
+                // We're swapping gems, so we have to check if either gem swapped produces a match.
                 self.is_matching_gem(data_copy.as_ref(), destination)
+                    || self.is_matching_gem(data_copy.as_ref(), point)
             } else {
                 false
             }
@@ -255,9 +257,9 @@ impl Board {
     ///    - Two pieces to its left/right
     ///    - Two pieces above it/below it
     ///    - One piece on either side horizontally/vertically
-    /// Two pieces to the left
     pub fn is_matching_gem(&self, data: &[Gems], point: Point) -> bool {
         let point_index = self.point_to_index(point);
+        // Two pieces to the left
         if point.0 >= 2
             && data[self.point_to_index(point - Point(1, 0))] == data[point_index]
             && data[self.point_to_index(point - Point(2, 0))] == data[point_index]
