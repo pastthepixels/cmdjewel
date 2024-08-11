@@ -1,27 +1,7 @@
-use cursive::direction::Direction;
 // Handles game UI.
-use cursive::event::{Event, EventResult, Key};
-use cursive::traits::*;
-use cursive::views::{Button, Canvas, Dialog, DummyView, EditView, LinearLayout, SelectView};
-use cursive::Cursive;
-
-use crate::game;
 use crate::view::BoardView;
-
-/// Cursor modes
-enum CursorMode {
-    Normal,
-    Swap,
-}
-
-impl std::fmt::Display for CursorMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CursorMode::Normal => write!(f, "NORMAL"),
-            CursorMode::Swap => write!(f, "SWAP"),
-        }
-    }
-}
+use cursive::views::{Button, Dialog, LinearLayout, Panel};
+use cursive::Cursive;
 
 // Menus
 pub fn show_menu_main(s: &mut Cursive) {
@@ -46,14 +26,20 @@ pub fn show_game(s: &mut Cursive) {
     s.pop_layer();
     // Creates the layout for the dialog
     let layout = LinearLayout::horizontal()
-        .child(
+        .child(Panel::new(
             LinearLayout::vertical()
                 .child(Button::new("Hint", |_| {}))
                 .child(LinearLayout::vertical().child(Button::new("Quit", show_menu_main))),
-        )
-        .child(BoardView::new());
+        ))
+        .child(Panel::new(BoardView::new()));
     // Creates the dialog
-    let game_dialog = Dialog::around(layout).title("cmdjewel");
+    let mut game_dialog = Dialog::around(layout).title("cmdjewel");
+    // Grabs focus of the board
+    game_dialog
+        .get_content_mut()
+        .take_focus(cursive::direction::Direction::right())
+        .expect(":(");
+    // Adds the dialog into a new layer
     s.add_layer(game_dialog);
 }
 
