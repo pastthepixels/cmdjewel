@@ -171,8 +171,8 @@ impl Board {
         self.data[source_index] = temp;
     }
 
-    /// Returns true if a point [x,y] is in a map.
-    pub fn is_in_map(&self, point: Point) -> bool {
+    /// Returns true if a point [x,y] is in a the board.
+    pub fn is_in_board(&self, point: Point) -> bool {
         point.1 < self.get_width() && point.0 < self.get_width()
     }
 
@@ -235,7 +235,7 @@ impl Board {
                 Direction::Down => point + Point(0, 1),
             };
             // 1. Check if the cursor and destination are in the map.
-            if self.is_in_map(self.cursor) && self.is_in_map(destination) {
+            if self.is_in_board(self.cursor) && self.is_in_board(destination) {
                 // 2. Copy the board
                 let mut data_copy = self.data.clone();
                 // 3. Swap the gems in this board.
@@ -266,13 +266,13 @@ impl Board {
         {
             true
         // Two pieces to the right
-        } else if self.is_in_map(point + Point(2, 0))
+        } else if self.is_in_board(point + Point(2, 0))
             && data[self.point_to_index(point + Point(1, 0))] == data[point_index]
             && data[self.point_to_index(point + Point(2, 0))] == data[point_index]
         {
             true
         // Two pieces below it
-        } else if self.is_in_map(point + Point(0, 2))
+        } else if self.is_in_board(point + Point(0, 2))
             && data[self.point_to_index(point + Point(0, 1))] == data[point_index]
             && data[self.point_to_index(point + Point(0, 2))] == data[point_index]
         {
@@ -285,15 +285,15 @@ impl Board {
             true
         // Horizontal middle
         } else if point.0 >= 1
-            && self.is_in_map(point + Point(1, 0))
+            && self.is_in_board(point + Point(1, 0))
             && data[self.point_to_index(point - Point(1, 0))] == data[point_index]
             && data[self.point_to_index(point + Point(1, 0))] == data[point_index]
         {
             true
         // Vertical middle
         } else if point.1 >= 1
-            && self.is_in_map(point - Point(0, 1))
-            && self.is_in_map(point + Point(0, 1))
+            && self.is_in_board(point - Point(0, 1))
+            && self.is_in_board(point + Point(0, 1))
             && data[self.point_to_index(point - Point(0, 1))] == data[point_index]
             && data[self.point_to_index(point + Point(0, 1))] == data[point_index]
         {
@@ -311,7 +311,7 @@ impl Board {
             Direction::Up => self.cursor - Point(0, 1),
             Direction::Down => self.cursor + Point(0, 1),
         };
-        if self.is_in_map(destination) {
+        if self.is_in_board(destination) {
             self.cursor = destination;
         }
     }
