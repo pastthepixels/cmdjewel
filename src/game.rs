@@ -173,7 +173,7 @@ impl Board {
 
     /// Returns true if a point [x,y] is in a map.
     pub fn is_in_map(&self, point: Point) -> bool {
-        (point.1 * self.get_width() + point.0) < self.data.len()
+        point.1 < self.get_width() && point.0 < self.get_width()
     }
 
     /// Finds all gems that match and returns their positions in the board.
