@@ -316,6 +316,11 @@ impl Board {
         }
     }
 
+    /// Sets the cursor to a particular point.
+    pub fn set_cursor(&mut self, point: Point) {
+        self.cursor = point;
+    }
+
     /// Gets the coordinates of the cursor
     pub fn get_cursor(&self) -> Point {
         self.cursor.clone()

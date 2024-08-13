@@ -5,7 +5,7 @@ use cursive::event::{Event, EventResult, MouseButton, MouseEvent};
 use cursive::theme::{BaseColor, Color, ColorStyle};
 use cursive::view::CannotFocus;
 use cursive::views::Dialog;
-use cursive::{Cursive, Printer, Vec2};
+use cursive::{traits, Cursive, Printer, Vec2};
 
 /// Cursor modes
 pub enum CursorMode {
@@ -49,9 +49,23 @@ impl BoardView {
             cursor_mode: CursorMode::Normal,
         }
     }
-}
 
-impl BoardView {
+    /// Gets a reference to the board
+    pub fn board_ref(&self) -> &[game::Gems] {
+        self.board.as_ref()
+    }
+
+    /// Sets the cursor to the first swappable gem
+    pub fn hint(&mut self) {
+        for i in 0..self.board.as_ref().len() {
+            let point = self.board.index_to_point(i);
+            if self.board.is_valid_gem(point) {
+                self.board.set_cursor(point);
+                break;
+            }
+        }
+    }
+
     fn attempt_swap(&mut self, direction: game::Direction) {
         if self
             .board
@@ -73,6 +87,7 @@ impl BoardView {
     }
 
     /// Creates all animations.
+    /// TODO: for moving the board, use reposition_layer
     fn create_animations(&mut self) {
         // Highlight all matching gems
         self.board.get_matching_gems().iter().for_each(|x| {
@@ -145,7 +160,6 @@ impl cursive::view::View for BoardView {
     }
 
     fn take_focus(&mut self, _: Direction) -> Result<EventResult, CannotFocus> {
-        self.has_focus = true;
         Ok(EventResult::Consumed(None))
     }
 
@@ -154,6 +168,8 @@ impl cursive::view::View for BoardView {
         if let Event::FocusLost = event {
             self.has_focus = false;
             return EventResult::Ignored;
+        } else {
+            self.has_focus = true;
         }
         // Updates animations
         self.update_animations();

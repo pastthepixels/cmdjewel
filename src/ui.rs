@@ -1,6 +1,6 @@
 // Handles game UI.
 use crate::view::BoardView;
-use cursive::views::{Button, Dialog, LinearLayout, Panel};
+use cursive::views::{Button, Dialog, LayerPosition, LinearLayout, NamedView, Panel};
 use cursive::Cursive;
 
 // Menus
@@ -17,7 +17,7 @@ pub fn show_menu_main(s: &mut Cursive) {
     // Adds the dialog
     s.add_layer(
         Dialog::around(buttons)
-            .title("cmdjewel rewrite (wip)")
+            .title("welcome to cmdjewel")
             .button("Quit", |s| s.quit()),
     );
 }
@@ -28,17 +28,23 @@ pub fn show_game(s: &mut Cursive) {
     let layout = LinearLayout::horizontal()
         .child(Panel::new(
             LinearLayout::vertical()
-                .child(Button::new("Hint", |_| {}))
+                .child(Button::new("Hint", |s| {
+                    s.call_on_name("board", |view: &mut BoardView| view.hint());
+                    // Highlights the game window
+                    s.focus_name("board").expect("could not focus");
+                }))
                 .child(LinearLayout::vertical().child(Button::new("Quit", show_menu_main))),
         ))
-        .child(Panel::new(BoardView::new()));
+        .child(Panel::new(NamedView::new("board", BoardView::new())));
+
     // Creates the dialog
-    let mut game_dialog = Dialog::around(layout).title("cmdjewel");
-    // Grabs focus of the board
+    let mut game_dialog = Dialog::around(layout).title("classic"); // TODO: rename to zen when appropriate
+                                                                   // Grabs focus of the board
     game_dialog
         .get_content_mut()
         .take_focus(cursive::direction::Direction::right())
         .expect(":(");
+
     // Adds the dialog into a new layer
     s.add_layer(game_dialog);
 }
