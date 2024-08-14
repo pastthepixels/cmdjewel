@@ -100,6 +100,11 @@ impl Board {
         (self.score % POINTS_LEVEL) as f32 / POINTS_LEVEL as f32
     }
 
+    /// Gets the score
+    pub fn get_score(&self) -> u32 {
+        self.score
+    }
+
     /// Adds gems to the top row such that, if the gems fell, the lowest non-filled row is filled.
     pub fn fill_from_top(&mut self) {
         // 1. Find the first row from the bottom that has at least 1 empty spot.
@@ -196,6 +201,7 @@ impl Board {
     pub fn update_matching_gems(&mut self) {
         self.get_matching_gems().iter().for_each(|point| {
             self.data[self.point_to_index(*point)] = Gems::Empty;
+            self.score += POINTS_SWAP as u32;
         })
     }
 
