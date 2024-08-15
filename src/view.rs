@@ -171,26 +171,43 @@ impl cursive::view::View for BoardView {
         } else {
             self.has_focus = true;
         }
-        // Updates animations
-        self.update_animations();
-        let mut is_animation_removed = false;
-        for i in (0..self.animations.len()).rev() {
-            if self.animations[i].duration == 0 {
-                self.animations.remove(i);
-                is_animation_removed = true;
-            } else {
-                return EventResult::Ignored;
-            }
-        }
-        if !is_animation_removed {
-            self.create_animations();
-        }
-        // Update board
-        if self.animations.len() == 0 {
-            self.update_board();
-        }
         // Handle events
         match event {
+            Event::Refresh => {
+                // Updates animations
+                self.update_animations();
+                let mut is_animation_removed = false;
+                for i in (0..self.animations.len()).rev() {
+                    if self.animations[i].duration == 0 {
+                        self.animations.remove(i);
+                        is_animation_removed = true;
+                    } else {
+                        return EventResult::Ignored;
+                    }
+                }
+                if !is_animation_removed {
+                    self.create_animations();
+                }
+                // Update board
+                if self.animations.len() == 0 {
+                    self.update_board();
+                }
+                // Updates GUI
+                let score = self.board.get_score();
+                let level = self.board.get_level() + 1;
+                let progress = self.board.get_level_progress() * 100.;
+                EventResult::with_cb(move |s| {
+                    s.call_on_name("score", |score_view: &mut cursive::views::TextView| {
+                        score_view.set_content(format!("{}", score));
+                    });
+                    s.call_on_name("level", |level_view: &mut cursive::views::TextView| {
+                        level_view.set_content(format!("Level {}", level));
+                    });
+                    s.call_on_name("progress", |p: &mut cursive::views::ProgressBar| {
+                        p.set_value(progress as usize)
+                    });
+                })
+            }
             Event::Char(c) => match c.to_ascii_lowercase() {
                 ' ' => {
                     if let CursorMode::Normal = self.cursor_mode {
