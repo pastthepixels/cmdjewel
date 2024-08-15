@@ -1,3 +1,4 @@
+mod animations;
 mod game;
 mod ui;
 mod view;
@@ -36,8 +37,9 @@ fn main() {
     });
     // show the main menu
     ui::show_menu_main(&mut siv);
+    // set up commands
+    ui::init_commands(&mut siv);
     // Set the refresh rate to 30 FPS and run
     siv.set_autorefresh(true);
-    //siv.set_fps(30);
     siv.run();
 }

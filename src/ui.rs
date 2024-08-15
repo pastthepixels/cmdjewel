@@ -2,9 +2,9 @@
 use crate::view::BoardView;
 use cursive::event::{Event, EventTrigger};
 use cursive::utils::Counter;
-use cursive::view::Nameable;
+use cursive::view::{Nameable, Resizable};
 use cursive::views::{
-    Button, Dialog, LayerPosition, LinearLayout, NamedView, Panel, ProgressBar, TextView,
+    Button, Dialog, EditView, LayerPosition, LinearLayout, NamedView, Panel, ProgressBar, TextView,
 };
 use cursive::{Cursive, View};
 
@@ -27,6 +27,7 @@ pub fn show_menu_main(s: &mut Cursive) {
     );
 }
 
+// Game
 pub fn show_game(s: &mut Cursive) {
     s.pop_layer();
     // Creates the layout for the dialog
@@ -62,12 +63,34 @@ pub fn show_game(s: &mut Cursive) {
     // Creates the dialog
     let game_dialog = Dialog::around(layout).title("classic"); // TODO: rename to zen when appropriate
 
-    //s.set_global_callback(Event::Refresh, |_| println!("bleh"));
-
     // Adds the dialog into a new layer
     s.add_layer(game_dialog);
 
     s.focus_name("board").unwrap();
 }
 
-// Events
+// Commands
+pub fn init_commands(s: &mut Cursive) {
+    s.add_global_callback(':', |s| {
+        s.add_layer(
+            Dialog::new().title("Command").content(
+                EditView::new()
+                    .on_submit(|s: &mut Cursive, command: &str| {
+                        if command == "explode" {
+                            s.call_on_name("board", |b: &mut BoardView| b.explode());
+                        }
+                        if command == "q" || command == "qa" || command == "q!" || command == "qa!"
+                        {
+                            s.quit();
+                        }
+                        if command == "h" || command == "hint" {
+                            s.call_on_name("board", |view: &mut BoardView| view.hint());
+                        }
+                        s.pop_layer();
+                    })
+                    .with_name("command")
+                    .fixed_width(40),
+            ),
+        );
+    });
+}
