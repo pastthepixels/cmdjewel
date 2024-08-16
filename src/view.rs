@@ -9,7 +9,7 @@ use cursive::traits::Resizable;
 use cursive::view::CannotFocus;
 use cursive::view::IntoBoxedView;
 use cursive::views::stack_view::{Fullscreen, LayerConfig, Transparent};
-use cursive::views::Dialog;
+use cursive::views::{Dialog, ProgressBar, TextView};
 use cursive::{traits, Cursive, Printer, Vec2};
 
 /// Cursor modes
@@ -19,8 +19,10 @@ pub enum CursorMode {
 }
 
 /// Animations
+#[derive(PartialEq, Eq)]
 pub enum AnimationType {
     Highlight,
+    Explosion,
 }
 
 pub struct Animation {
@@ -55,11 +57,6 @@ impl BoardView {
         }
     }
 
-    /// Gets a reference to the board
-    pub fn board_ref(&self) -> &[game::Gems] {
-        self.board.as_ref()
-    }
-
     /// Sets the cursor to the first swappable gem
     pub fn hint(&mut self) {
         for i in 0..self.board.as_ref().len() {
@@ -69,6 +66,15 @@ impl BoardView {
                 break;
             }
         }
+    }
+
+    // Explodes the board
+    pub fn animation_explode(&mut self) {
+        self.animations.push(Animation {
+            point: game::Point(0, 0),
+            duration: 10,
+            animation_type: AnimationType::Explosion,
+        });
     }
 
     fn attempt_swap(&mut self, direction: game::Direction) {
@@ -102,6 +108,10 @@ impl BoardView {
                 animation_type: AnimationType::Highlight,
             });
         });
+        // Explode if not valid
+        if !self.board.is_valid() && self.board.is_full() {
+            self.animation_explode();
+        }
     }
 
     /// Updates board logic.
@@ -158,7 +168,10 @@ impl cursive::view::View for BoardView {
             let mut color = BoardView::gem_color(self.board.as_ref()[i]);
             // Swap colors for highlighted gems.
             self.animations.iter().for_each(|anim| {
-                if anim.point.0 == point.0 && anim.point.1 == point.1 {
+                if anim.point.0 == point.0
+                    && anim.point.1 == point.1
+                    && (*anim).animation_type == AnimationType::Highlight
+                {
                     color = color.invert();
                 }
             });
@@ -203,45 +216,53 @@ impl cursive::view::View for BoardView {
             Event::Refresh => {
                 // Updates animations
                 self.update_animations();
+                let mut exists_running_animation = false;
                 let mut is_animation_removed = false;
                 for i in (0..self.animations.len()).rev() {
                     if self.animations[i].duration == 0 {
                         self.animations.remove(i);
                         is_animation_removed = true;
                     } else {
-                        return EventResult::Ignored;
+                        exists_running_animation = true;
                     }
                 }
-                if !is_animation_removed {
-                    self.create_animations();
-                }
-                // Update board
-                if self.animations.len() == 0 {
-                    self.update_board();
+                if !exists_running_animation {
+                    if !is_animation_removed {
+                        self.create_animations();
+                    }
+                    // Update board
+                    if self.animations.len() == 0 {
+                        self.update_board();
+                    }
                 }
                 // Updates GUI (yes i have to make all these variables i love rust multithreading)
                 let score = self.board.get_score();
                 let level = self.board.get_level() + 1;
                 let progress = self.board.get_level_progress() * 100.;
-                let is_valid = self.board.is_valid() || !self.board.is_full();
-                // I LOVE MULTITHREADING!! I LOVE MULTITHREADING!!!
-                let data = Box::new(std::sync::Arc::new(self.board.as_ref().to_vec()));
+                let is_valid = self
+                    .animations
+                    .iter()
+                    .find(|x| (**x).animation_type == AnimationType::Explosion)
+                    .is_none();
                 EventResult::with_cb(move |s| {
-                    s.call_on_name("score", |score_view: &mut cursive::views::TextView| {
-                        score_view.set_content(format!("{}", score));
+                    s.call_on_name("score", |score_view: &mut TextView| {
+                        score_view.set_content(format!("{}", score))
                     });
-                    s.call_on_name("level", |level_view: &mut cursive::views::TextView| {
-                        level_view.set_content(format!("Level {}", level));
+                    s.call_on_name("level", |level_view: &mut TextView| {
+                        level_view.set_content(format!("Level {}", level))
                     });
-                    s.call_on_name("progress", |p: &mut cursive::views::ProgressBar| {
+                    s.call_on_name("progress", |p: &mut ProgressBar| {
                         p.set_value(progress as usize)
                     });
                     // Explodes if applicable
                     if is_valid == false {
+                        let data = s
+                            .call_on_name("board", |b: &mut BoardView| b.board.as_ref().to_vec())
+                            .unwrap();
                         s.screen_mut().add_fullscreen_layer(
                             AnimationView::new(
-                                crate::animations::Explosion::new(data.len(), 0.6),
-                                data.to_vec(),
+                                crate::animations::Explosion::new(data.len(), 1.0),
+                                data,
                             )
                             .with_on_finish(move |s| {
                                 ui::show_menu_main(s);

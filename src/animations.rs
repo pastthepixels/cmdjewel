@@ -48,8 +48,14 @@ impl<T: Animation + 'static> cursive::view::View for AnimationView<T> {
     fn draw(&self, printer: &Printer) {
         // TODO: we can't actually find where the top corner of the board is in global space. maybe one day we can change that.
         let board_offset = Point(
-            printer.output_size.x / 2 - self.get_width() * 3 / 2,
-            printer.output_size.y / 2 - self.get_width() / 2,
+            printer.output_size.x / 2 - self.get_width() * 3 / 2 - 1,
+            printer.output_size.y / 2 - self.get_width() / 2 - 1,
+        );
+        // Prints a box as the board TODO: only in explosion animation
+        printer.print_box(
+            (board_offset.0, board_offset.1),
+            (self.get_width() * 3 + 2, self.get_width() + 2),
+            false,
         );
         // Loops through/prints NON-EMPTY gems
         for i in 0..self.data.len() {
@@ -57,7 +63,11 @@ impl<T: Animation + 'static> cursive::view::View for AnimationView<T> {
             let mut point = Point(0, i / self.get_width());
             point.0 = (i - point.1 * self.get_width()) * 3;
             // Adds to it the offset in the animation
-            point = point + self.animation.get_offsets()[i] + board_offset;
+            let offset = self.animation.get_offsets()[i];
+            point = Point(
+                (point.0 as i32 + offset.0 + board_offset.0 as i32) as usize,
+                (point.1 as i32 + offset.1 + board_offset.1 as i32) as usize,
+            );
             // Prints it
             if self.data[i] != Gems::Empty {
                 printer.with_color(BoardView::gem_color(self.data[i]), |printer| {
@@ -92,7 +102,7 @@ impl<T: Animation + 'static> cursive::view::View for AnimationView<T> {
 /// Trait all animations must implement
 pub trait Animation: Send + Sync {
     fn tick(&mut self);
-    fn get_offsets(&self) -> Vec<Point>;
+    fn get_offsets(&self) -> Vec<(i32, i32)>;
     fn get_max_keyframe(&self) -> usize;
     fn get_keyframe(&self) -> usize;
 }
@@ -127,14 +137,14 @@ impl Animation for Explosion {
         });
     }
 
-    /// Gets an array of offsets (from the normal position you would print a gem) as a Point
-    fn get_offsets(&self) -> Vec<Point> {
+    /// Gets an array of offsets (from the normal position you would print a gem) as integer tuples
+    fn get_offsets(&self) -> Vec<(i32, i32)> {
         self.velocities
             .iter()
             .map(|x| {
-                Point(
-                    (x.0 * self.keyframe as f32) as usize,
-                    (x.1 * self.keyframe as f32) as usize,
+                (
+                    (x.0 * self.keyframe as f32) as i32,
+                    (x.1 * self.keyframe as f32) as i32,
                 )
             })
             .collect()

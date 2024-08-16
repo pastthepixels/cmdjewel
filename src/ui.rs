@@ -76,6 +76,11 @@ pub fn init_commands(s: &mut Cursive) {
             Dialog::new().title("Command").content(
                 EditView::new()
                     .on_submit(|s: &mut Cursive, command: &str| {
+                        if command == "explode" {
+                            s.call_on_name("board", |view: &mut BoardView| {
+                                view.animation_explode()
+                            });
+                        }
                         if command == "q" || command == "qa" || command == "q!" || command == "qa!"
                         {
                             s.quit();
