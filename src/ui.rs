@@ -4,7 +4,8 @@ use cursive::event::{Event, EventTrigger};
 use cursive::utils::Counter;
 use cursive::view::{Nameable, Resizable};
 use cursive::views::{
-    Button, Dialog, EditView, LayerPosition, LinearLayout, NamedView, Panel, ProgressBar, TextView,
+    Button, Dialog, EditView, LayerPosition, LinearLayout, NamedView, OnEventView, Panel,
+    ProgressBar, TextView,
 };
 use cursive::{Cursive, Printer, View};
 
@@ -72,27 +73,50 @@ pub fn show_game(s: &mut Cursive) {
 // Commands
 pub fn init_commands(s: &mut Cursive) {
     s.add_global_callback(':', |s| {
+        let mut edit_view = EditView::new().on_submit(|s: &mut Cursive, command: &str| {
+            // Be generous and trim/lowercase commands
+            let command = command.trim().to_lowercase();
+            s.pop_layer();
+            // Animation debugging
+            if command == "explode" {
+                s.call_on_name("board", |view: &mut BoardView| {
+                    view.animation_explode()
+                });
+            }
+            // Going to the main menu
+            else if command == "main" || command == "m" {
+                show_menu_main(s);
+            }
+            // Starting new games
+            else if command == "play"
+                || command == "play classic"
+                || command == "p"
+                || command == "p classic"
+            {
+                show_game(s);
+            }
+            // TODO: play zen
+            // Vim keys
+            else if command == "q"
+                || command == "qa"
+                || command == "q!"
+                || command == "qa!"
+            {
+                s.quit();
+            } else if command == "h" || command == "hint" {
+                s.call_on_name("board", |view: &mut BoardView| view.hint());
+            } else {
+            // In case nothing was recognized, display a help window.
+            s.add_layer(Dialog::info("Command not found. Available commands are main/m, play/p [classic/zen], q[a/!], hint/h"));
+            }
+        });
+        edit_view.set_filler(" ");
         s.add_layer(
-            Dialog::new().title("Command").content(
-                EditView::new()
-                    .on_submit(|s: &mut Cursive, command: &str| {
-                        if command == "explode" {
-                            s.call_on_name("board", |view: &mut BoardView| {
-                                view.animation_explode()
-                            });
-                        }
-                        if command == "q" || command == "qa" || command == "q!" || command == "qa!"
-                        {
-                            s.quit();
-                        }
-                        if command == "h" || command == "hint" {
-                            s.call_on_name("board", |view: &mut BoardView| view.hint());
-                        }
-                        s.pop_layer();
-                    })
-                    .with_name("command")
-                    .fixed_width(40),
-            ),
+            Dialog::new().title("Command").content(OnEventView::new(LinearLayout::horizontal().child(TextView::new("> ")).child(edit_view.full_width())).on_event(Event::Key(cursive::event::Key::Esc), |s| {
+                s.pop_layer();
+            }))
+                .with_name("command")
+                .fixed_width(32),
         );
     });
 }
