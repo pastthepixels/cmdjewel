@@ -8,7 +8,7 @@ use cursive::Printer;
 use rand::Rng;
 use std::sync::Arc;
 
-const EXPLOSION_GRAVITY: f32 = 0.01;
+const EXPLOSION_GRAVITY: f32 = 0.04;
 
 /// Fullscreen animations.
 pub struct AnimationView<T: Animation + 'static> {

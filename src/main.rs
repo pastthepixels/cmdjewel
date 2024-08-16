@@ -14,10 +14,9 @@ fn main() {
         palette: cursive::theme::Palette::retro().with(|palette| {
             {
                 // First, override some colors from the base palette.
-                use cursive::style::Color::TerminalDefault;
                 use cursive::style::PaletteColor::*;
 
-                palette[Background] = TerminalDefault;
+                palette[Background] = cursive::theme::Color::Rgb(46, 52, 64);
                 palette[View] = cursive::theme::Color::Rgb(46, 52, 64);
                 palette[Primary] = cursive::theme::Color::Rgb(213, 219, 230);
                 palette[TitlePrimary] = cursive::theme::Color::Rgb(126, 158, 189);

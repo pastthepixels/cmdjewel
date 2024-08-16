@@ -6,7 +6,7 @@ use cursive::view::{Nameable, Resizable};
 use cursive::views::{
     Button, Dialog, EditView, LayerPosition, LinearLayout, NamedView, Panel, ProgressBar, TextView,
 };
-use cursive::{Cursive, View};
+use cursive::{Cursive, Printer, View};
 
 // Menus
 pub fn show_menu_main(s: &mut Cursive) {
@@ -76,9 +76,6 @@ pub fn init_commands(s: &mut Cursive) {
             Dialog::new().title("Command").content(
                 EditView::new()
                     .on_submit(|s: &mut Cursive, command: &str| {
-                        if command == "explode" {
-                            s.call_on_name("board", |b: &mut BoardView| b.explode());
-                        }
                         if command == "q" || command == "qa" || command == "q!" || command == "qa!"
                         {
                             s.quit();

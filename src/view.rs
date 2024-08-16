@@ -71,11 +71,6 @@ impl BoardView {
         }
     }
 
-    /// Runs the explosion animation on the board.
-    pub fn explode(&mut self) {
-        println!("bleh")
-    }
-
     fn attempt_swap(&mut self, direction: game::Direction) {
         if self
             .board
@@ -245,7 +240,7 @@ impl cursive::view::View for BoardView {
                     if is_valid == false {
                         s.screen_mut().add_fullscreen_layer(
                             AnimationView::new(
-                                crate::animations::Explosion::new(data.len(), 0.4),
+                                crate::animations::Explosion::new(data.len(), 0.6),
                                 data.to_vec(),
                             )
                             .with_on_finish(move |s| {
