@@ -1,9 +1,14 @@
+use crate::animations::AnimationView;
 use crate::game::Board;
 use crate::game::{self};
+use crate::ui;
 use cursive::direction::Direction;
 use cursive::event::{Event, EventResult, MouseButton, MouseEvent};
 use cursive::theme::{BaseColor, Color, ColorStyle};
+use cursive::traits::Resizable;
 use cursive::view::CannotFocus;
+use cursive::view::IntoBoxedView;
+use cursive::views::stack_view::{Fullscreen, LayerConfig, Transparent};
 use cursive::views::Dialog;
 use cursive::{traits, Cursive, Printer, Vec2};
 
@@ -66,6 +71,11 @@ impl BoardView {
         }
     }
 
+    /// Runs the explosion animation on the board.
+    pub fn explode(&mut self) {
+        println!("bleh")
+    }
+
     fn attempt_swap(&mut self, direction: game::Direction) {
         if self
             .board
@@ -105,38 +115,56 @@ impl BoardView {
         self.board.fill_from_top();
         self.board.update_physics_frame();
     }
+
+    // Generics
+
+    /// Gets a printable string from a game::Gems.
+    /// This doesn't belong in game.rs as that file only contains game logic and nothing user-facing.
+    pub fn gem_string(gem: game::Gems) -> String {
+        match gem {
+            game::Gems::Empty => "•",
+            game::Gems::Blue => "▼",
+            game::Gems::White => "●",
+            game::Gems::Red => "■",
+            game::Gems::Yellow => "◆",
+            game::Gems::Green => "⬟",
+            game::Gems::Orange => "⬢",
+            game::Gems::Purple => "▲",
+        }
+        .into()
+    }
+
+    /// Gets a ColorStyle given a game::Gems
+    pub fn gem_color(gem: game::Gems) -> ColorStyle {
+        match gem {
+            game::Gems::Empty => ColorStyle::new(Color::Rgb(67, 76, 94), Color::Rgb(46, 52, 64)),
+            game::Gems::Blue => ColorStyle::new(Color::Rgb(126, 158, 189), Color::Rgb(46, 52, 64)),
+            game::Gems::White => ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64)),
+            game::Gems::Red => ColorStyle::new(Color::Rgb(190, 96, 105), Color::Rgb(46, 52, 64)),
+            game::Gems::Yellow => {
+                ColorStyle::new(Color::Rgb(233, 201, 138), Color::Rgb(46, 52, 64))
+            }
+            game::Gems::Green => ColorStyle::new(Color::Rgb(162, 188, 139), Color::Rgb(46, 52, 64)),
+            game::Gems::Orange => {
+                ColorStyle::new(Color::Rgb(207, 135, 111), Color::Rgb(46, 52, 64))
+            }
+            game::Gems::Purple => {
+                ColorStyle::new(Color::Rgb(174, 174, 255), Color::Rgb(46, 52, 64))
+            }
+        }
+    }
 }
 
 impl cursive::view::View for BoardView {
     fn draw(&self, printer: &Printer) {
         for i in 0..self.board.as_ref().len() {
-            let string = match self.board.as_ref()[i] {
-                game::Gems::Empty => "•",
-                game::Gems::Blue => "▼",
-                game::Gems::White => "●",
-                game::Gems::Red => "■",
-                game::Gems::Yellow => "◆",
-                game::Gems::Green => "⬟",
-                game::Gems::Orange => "⬢",
-                game::Gems::Purple => "▲",
-            };
+            let string = BoardView::gem_string(self.board.as_ref()[i]);
             let point = self.board.index_to_point(i);
-            let mut color = match self.board.as_ref()[i] {
-                game::Gems::Empty => (Color::Rgb(67, 76, 94), Color::Rgb(46, 52, 64)),
-                game::Gems::Blue => (Color::Rgb(126, 158, 189), Color::Rgb(46, 52, 64)),
-                game::Gems::White => (Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64)),
-                game::Gems::Red => (Color::Rgb(190, 96, 105), Color::Rgb(46, 52, 64)),
-                game::Gems::Yellow => (Color::Rgb(233, 201, 138), Color::Rgb(46, 52, 64)),
-                game::Gems::Green => (Color::Rgb(162, 188, 139), Color::Rgb(46, 52, 64)),
-                game::Gems::Orange => (Color::Rgb(207, 135, 111), Color::Rgb(46, 52, 64)),
-                game::Gems::Purple => (Color::Rgb(174, 174, 255), Color::Rgb(46, 52, 64)),
-            };
+            let mut color = BoardView::gem_color(self.board.as_ref()[i]);
             // Swap colors for highlighted gems.
             self.animations.iter().for_each(|anim| {
                 if anim.point.0 == point.0 && anim.point.1 == point.1 {
-                    let foreground = color.0;
-                    color.0 = color.1;
-                    color.1 = foreground;
+                    color = color.invert();
                 }
             });
             // If there's no animation happening, you can theme the cell under whatever conditions.
@@ -144,16 +172,20 @@ impl cursive::view::View for BoardView {
                 // for instance, this is the cursor.
                 if i == self.board.point_to_index(self.board.get_cursor()) {
                     color = match self.cursor_mode {
-                        CursorMode::Normal => (Color::Rgb(46, 52, 64), Color::Rgb(213, 219, 230)),
-                        CursorMode::Swap => (Color::Rgb(213, 219, 230), Color::Rgb(190, 96, 105)),
+                        CursorMode::Normal => {
+                            ColorStyle::new(Color::Rgb(46, 52, 64), Color::Rgb(213, 219, 230))
+                        }
+                        CursorMode::Swap => {
+                            ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(190, 96, 105))
+                        }
                     }
                 }
             }
             // If the board is not focused, grey out everything.
             if !self.has_focus {
-                color = (Color::Rgb(76, 86, 106), Color::Rgb(59, 66, 82))
+                color = ColorStyle::new(Color::Rgb(76, 86, 106), Color::Rgb(59, 66, 82))
             }
-            printer.with_color(ColorStyle::new(color.0, color.1), |printer| {
+            printer.with_color(color, |printer| {
                 printer.print((point.0 * 3, point.1), &format!(" {} ", string))
             });
         }
@@ -192,10 +224,13 @@ impl cursive::view::View for BoardView {
                 if self.animations.len() == 0 {
                     self.update_board();
                 }
-                // Updates GUI
+                // Updates GUI (yes i have to make all these variables i love rust multithreading)
                 let score = self.board.get_score();
                 let level = self.board.get_level() + 1;
                 let progress = self.board.get_level_progress() * 100.;
+                let is_valid = self.board.is_valid() || !self.board.is_full();
+                // I LOVE MULTITHREADING!! I LOVE MULTITHREADING!!!
+                let data = Box::new(std::sync::Arc::new(self.board.as_ref().to_vec()));
                 EventResult::with_cb(move |s| {
                     s.call_on_name("score", |score_view: &mut cursive::views::TextView| {
                         score_view.set_content(format!("{}", score));
@@ -206,6 +241,23 @@ impl cursive::view::View for BoardView {
                     s.call_on_name("progress", |p: &mut cursive::views::ProgressBar| {
                         p.set_value(progress as usize)
                     });
+                    // Explodes if applicable
+                    if is_valid == false {
+                        s.screen_mut().add_fullscreen_layer(
+                            AnimationView::new(
+                                crate::animations::Explosion::new(data.len(), 0.4),
+                                data.to_vec(),
+                            )
+                            .with_on_finish(move |s| {
+                                ui::show_menu_main(s);
+                                s.add_layer(Dialog::info(&format!(
+                                    "Game over! You scored {} points and got to level {}.",
+                                    score, level
+                                )));
+                            })
+                            .full_screen(),
+                        );
+                    }
                 })
             }
             Event::Char(c) => match c.to_ascii_lowercase() {
@@ -217,6 +269,7 @@ impl cursive::view::View for BoardView {
                     }
                     EventResult::consumed()
                 }
+                ':' => EventResult::Ignored,
                 _ => EventResult::with_cb(move |s| {
                     s.add_layer(Dialog::info("Key not recognized. Use the arrow keys to move and the enter key to enter SWAP mode."));
                 }),

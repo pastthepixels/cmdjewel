@@ -205,6 +205,11 @@ impl Board {
         })
     }
 
+    /// Returns true if the entire board is filled with gems.
+    pub fn is_full(&self) -> bool {
+        self.data.iter().find(|x| Gems::Empty == **x) == None
+    }
+
     /// Returns true if you can make a move on the board.
     pub fn is_valid(&self) -> bool {
         for i in 0..self.data.len() {
