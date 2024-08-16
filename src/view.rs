@@ -121,6 +121,34 @@ impl BoardView {
         self.board.update_physics_frame();
     }
 
+    /// Moves the cursor by 1 in any direction and returns an EventResult.
+    fn move_cursor(&mut self, direction: game::Direction) -> EventResult {
+        match self.cursor_mode {
+            CursorMode::Swap => {
+                self.attempt_swap(direction);
+                EventResult::Consumed(None)
+            }
+            CursorMode::Normal => {
+                let cursor_valid = match direction {
+                    game::Direction::Left => self.board.get_cursor().0 != 0,
+                    game::Direction::Right => {
+                        self.board.get_cursor().0 != self.board.get_width() - 1
+                    }
+                    game::Direction::Up => self.board.get_cursor().1 != 0,
+                    game::Direction::Down => {
+                        self.board.get_cursor().1 != self.board.get_width() - 1
+                    }
+                };
+                if cursor_valid {
+                    self.board.move_cursor(direction);
+                    EventResult::Consumed(None)
+                } else {
+                    EventResult::Ignored
+                }
+            }
+        }
+    }
+
     // Generics
 
     /// Gets a printable string from a game::Gems.
@@ -286,66 +314,18 @@ impl cursive::view::View for BoardView {
                     EventResult::consumed()
                 }
                 ':' => EventResult::Ignored,
+                'h' => self.move_cursor(game::Direction::Left),
+                'l' => self.move_cursor(game::Direction::Right),
+                'k' => self.move_cursor(game::Direction::Up),
+                'j' => self.move_cursor(game::Direction::Down),
                 _ => EventResult::with_cb(move |s| {
                     s.add_layer(Dialog::info("Key not recognized. Use the arrow keys to move and the enter key to enter SWAP mode."));
                 }),
             },
-            Event::Key(cursive::event::Key::Left) => match self.cursor_mode {
-                CursorMode::Swap => {
-                    self.attempt_swap(game::Direction::Left);
-                    EventResult::Consumed(None)
-                }
-                CursorMode::Normal => {
-                    if self.board.get_cursor().0 != 0 {
-                        self.board.move_cursor(game::Direction::Left);
-                        EventResult::Consumed(None)
-                    } else {
-                        EventResult::Ignored
-                    }
-                }
-            },
-            Event::Key(cursive::event::Key::Right) => match self.cursor_mode {
-                CursorMode::Swap => {
-                    self.attempt_swap(game::Direction::Right);
-                    EventResult::Consumed(None)
-                }
-                CursorMode::Normal => {
-                    if self.board.get_cursor().0 != self.board.get_width() - 1 {
-                        self.board.move_cursor(game::Direction::Right);
-                        EventResult::Consumed(None)
-                    } else {
-                        EventResult::Ignored
-                    }
-                }
-            },
-            Event::Key(cursive::event::Key::Up) => match self.cursor_mode {
-                CursorMode::Swap => {
-                    self.attempt_swap(game::Direction::Up);
-                    EventResult::Consumed(None)
-                }
-                CursorMode::Normal => {
-                    if self.board.get_cursor().1 != 0 {
-                        self.board.move_cursor(game::Direction::Up);
-                        EventResult::Consumed(None)
-                    } else {
-                        EventResult::Ignored
-                    }
-                }
-            },
-            Event::Key(cursive::event::Key::Down) => match self.cursor_mode {
-                CursorMode::Swap => {
-                    self.attempt_swap(game::Direction::Down);
-                    EventResult::Consumed(None)
-                }
-                CursorMode::Normal => {
-                    if self.board.get_cursor().1 != self.board.get_width() - 1 {
-                        self.board.move_cursor(game::Direction::Down);
-                        EventResult::Consumed(None)
-                    } else {
-                        EventResult::Ignored
-                    }
-                }
-            },
+            Event::Key(cursive::event::Key::Left) => self.move_cursor(game::Direction::Left),
+            Event::Key(cursive::event::Key::Right) => self.move_cursor(game::Direction::Right),
+            Event::Key(cursive::event::Key::Up) => self.move_cursor(game::Direction::Up),
+            Event::Key(cursive::event::Key::Down) => self.move_cursor(game::Direction::Down),
             Event::Key(cursive::event::Key::Enter) => {
                 if let CursorMode::Normal = self.cursor_mode {
                     self.cursor_mode = CursorMode::Swap
