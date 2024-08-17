@@ -82,6 +82,11 @@ pub fn init_commands(s: &mut Cursive) {
                 s.call_on_name("board", |view: &mut BoardView| {
                     view.animation_explode()
                 });
+            } else
+            if command == "warp" {
+                 s.call_on_name("board", |view: &mut BoardView| {
+                    view.animation_warp()
+                });
             }
             // Going to the main menu
             else if command == "main" || command == "m" {

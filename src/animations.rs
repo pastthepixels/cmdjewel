@@ -1,14 +1,20 @@
-use crate::game::Board;
 use crate::game::Gems;
 use crate::game::Point;
 use crate::view::BoardView;
 use cursive::event::Event;
 use cursive::event::EventResult;
+use cursive::theme::Color;
+use cursive::theme::PaletteColor;
 use cursive::Printer;
 use rand::Rng;
 use std::sync::Arc;
 
 const EXPLOSION_GRAVITY: f32 = 0.04;
+
+const WARP_REPEL_DISTANCE: f32 = 5.;
+
+// How many keyframes are needed for the warp animation to push out everything
+const WARP_KEYFRAMES: usize = 50;
 
 /// Fullscreen animations.
 pub struct AnimationView<T: Animation + 'static> {
@@ -51,22 +57,16 @@ impl<T: Animation + 'static> cursive::view::View for AnimationView<T> {
             printer.output_size.x / 2 - self.get_width() * 3 / 2 - 1,
             printer.output_size.y / 2 - self.get_width() / 2 - 1,
         );
-        // Prints a box as the board TODO: only in explosion animation
-        printer.print_box(
-            (board_offset.0, board_offset.1),
-            (self.get_width() * 3 + 2, self.get_width() + 2),
-            false,
-        );
+        // Draws a background for the animation (if applicable)
+        self.animation
+            .draw_background(printer, &self.data, self.get_width(), &board_offset);
+        // Gets all offsets
+        let offsets = self.animation.get_offsets();
         // Loops through/prints NON-EMPTY gems
         for i in 0..self.data.len() {
-            // Gets the original offset of the gem
-            let mut point = Point(0, i / self.get_width());
-            point.0 = (i - point.1 * self.get_width()) * 3;
-            // Adds to it the offset in the animation
-            let offset = self.animation.get_offsets()[i];
-            point = Point(
-                (point.0 as i32 + offset.0 + board_offset.0 as i32) as usize,
-                (point.1 as i32 + offset.1 + board_offset.1 as i32) as usize,
+            let point = Point(
+                (offsets[i].0 as i32 + board_offset.0 as i32) as usize,
+                (offsets[i].1 as i32 + board_offset.1 as i32) as usize,
             );
             // Prints it
             if self.data[i] != Gems::Empty {
@@ -102,16 +102,27 @@ impl<T: Animation + 'static> cursive::view::View for AnimationView<T> {
 /// Trait all animations must implement
 pub trait Animation: Send + Sync {
     fn tick(&mut self);
-    fn get_offsets(&self) -> Vec<(i32, i32)>;
+    fn get_offsets(&self) -> Vec<Point<i32>>;
     fn get_max_keyframe(&self) -> usize;
     fn get_keyframe(&self) -> usize;
+    fn draw_background(&self, _: &Printer, _: &Vec<Gems>, _: usize, _: &Point<usize>);
+    /// Gets the position on screen for each gem, relative to the top left of the board
+    fn calculate_positions(num_gems: usize) -> Vec<Point<f32>> {
+        let mut positions: Vec<Point<f32>> = Vec::new();
+        let width = f32::sqrt(num_gems as f32) as usize;
+        for i in 0..num_gems {
+            let y = i / width;
+            positions.push(Point((i - y * width) as f32 * 3.0, y as f32));
+        }
+        positions
+    }
 }
 
 /// Explosion animation.
-/// Takes in a reference to a board and a keyframe, and returns a matrix the same size as the board's data which contains offsets for each gem.
 pub struct Explosion {
     keyframe: usize,
     velocities: Vec<(f32, f32)>,
+    positions: Vec<Point<f32>>,
 }
 
 impl Explosion {
@@ -124,6 +135,7 @@ impl Explosion {
             velocities: (0..num_gems)
                 .map(|_| (rng.gen_range(-force..force), rng.gen_range(-force..force)))
                 .collect(),
+            positions: Self::calculate_positions(num_gems),
         }
     }
 }
@@ -138,16 +150,15 @@ impl Animation for Explosion {
     }
 
     /// Gets an array of offsets (from the normal position you would print a gem) as integer tuples
-    fn get_offsets(&self) -> Vec<(i32, i32)> {
-        self.velocities
-            .iter()
-            .map(|x| {
-                (
-                    (x.0 * self.keyframe as f32) as i32,
-                    (x.1 * self.keyframe as f32) as i32,
-                )
-            })
-            .collect()
+    fn get_offsets(&self) -> Vec<Point<i32>> {
+        let mut offsets: Vec<Point<i32>> = Vec::new();
+        for i in 0..self.positions.len() {
+            offsets.push(Point(
+                (self.velocities[i].0 * self.keyframe as f32 + self.positions[i].0) as i32,
+                (self.velocities[i].1 * self.keyframe as f32 + self.positions[i].1) as i32,
+            ))
+        }
+        offsets
     }
 
     fn get_max_keyframe(&self) -> usize {
@@ -157,15 +168,166 @@ impl Animation for Explosion {
     fn get_keyframe(&self) -> usize {
         self.keyframe
     }
+
+    fn draw_background(
+        &self,
+        printer: &Printer,
+        _: &Vec<Gems>,
+        width: usize,
+        board_offset: &Point<usize>,
+    ) {
+        printer.print_box(
+            (board_offset.0, board_offset.1),
+            (width * 3 + 2, width + 2),
+            false,
+        );
+    }
 }
 
-/// Moves gems in a board corresponding to the warp animation. Does not create tunnels.
-/// Takes in a reference to a board and a keyframe, and returns a matrix the same size as the board's data which contains offsets for each gem.
-pub fn warp_gems(board: &Board, keyframe: usize) -> Vec<Point> {
-    todo!()
+/// Warp animation.
+pub struct Warp {
+    keyframe: usize,
+    positions: Vec<Point<f32>>,
+    velocities: Vec<Point<f32>>,
+    circles: Vec<(usize, Color)>,
 }
 
-/// Draws tunnels given a keyframe and reference to a cursive Printer
-pub fn warp_tunnels(printer: &Printer, keyframe: usize) {
-    todo!()
+impl Warp {
+    /// Creates a new explosion animation.
+    /// Requires the number of gems on a board, and the force of the explosion.
+    pub fn new(num_gems: usize, force: f32) -> Self {
+        let mut rng = rand::thread_rng();
+        Warp {
+            keyframe: 0,
+            velocities: (0..num_gems)
+                .map(|_| Point(rng.gen_range(-force..force), rng.gen_range(-force..force)))
+                .collect(),
+            positions: Self::calculate_positions(num_gems),
+            circles: Vec::new(),
+        }
+    }
+
+    /// Draws a circle with the midpoint circle algorithm, adapted from [Wikipedia](https://en.wikipedia.org/wiki/Midpoint_circle_algorithm).
+    fn draw_circle(printer: &Printer, origin: Point<f32>, radius: i32, color: Color) {
+        let mut t1 = radius as f32 / 16.0;
+        let mut x = radius as f32;
+        let mut y = 0.0;
+        while !(x < y) {
+            // Draws points
+            vec![
+                cursive::Vec2::new((origin.0 + x) as usize, (origin.1 - y) as usize),
+                cursive::Vec2::new((origin.0 + x) as usize, (origin.1 + y) as usize),
+                cursive::Vec2::new((origin.0 - x) as usize, (origin.1 - y) as usize),
+                cursive::Vec2::new((origin.0 - x) as usize, (origin.1 + y) as usize),
+                cursive::Vec2::new((origin.0 + y) as usize, (origin.1 - x) as usize),
+                cursive::Vec2::new((origin.0 + y) as usize, (origin.1 + x) as usize),
+                cursive::Vec2::new((origin.0 - y) as usize, (origin.1 - x) as usize),
+                cursive::Vec2::new((origin.0 - y) as usize, (origin.1 + x) as usize),
+            ]
+            .iter()
+            .for_each(|vec| {
+                if vec.x != 0 && vec.y != 0 {
+                    printer.with_color(
+                        cursive::theme::ColorStyle::new(color, PaletteColor::Background),
+                        |printer| printer.print(vec, "•"),
+                    );
+                }
+            });
+            // Increments
+            y = y + 1.0;
+            t1 = t1 + y;
+            let t2 = t1 - x;
+            if t2 >= 0.0 {
+                t1 = t2;
+                x -= 1.0;
+            }
+        }
+    }
+}
+
+impl Animation for Warp {
+    /// Increase the keyframe by one, and update it
+    fn tick(&mut self) {
+        self.keyframe += 1;
+        // Get center of board
+        let mut center = Point((f32::sqrt(self.positions.len() as f32) / 2.0) as f32, 0.0);
+        center.1 = center.0;
+        center.0 = center.0 * 3.0;
+        // For each gem...
+        for i in 0..self.positions.len() {
+            let distance = Point::<f32>::distance_to(self.positions[i], center) + 0.5;
+            if distance != 0.0 {
+                // normalised
+                let direction = Point(
+                    (center.0 - self.positions[i].0) / distance,
+                    (center.1 - self.positions[i].1) / distance,
+                );
+                // If the distance to the center is larger by some amount, repel it from the center.
+                if distance > WARP_REPEL_DISTANCE
+                    || self.get_max_keyframe() - self.keyframe < WARP_KEYFRAMES
+                {
+                    self.velocities[i].0 -= direction.0 * (1.0 / distance);
+                    self.velocities[i].1 -= direction.1 * (1.0 / distance);
+                }
+                // Otherwise, attract it to the center.
+                else {
+                    self.velocities[i].0 += direction.0 * (1.0 / distance);
+                    self.velocities[i].1 += direction.1 * (1.0 / distance);
+                }
+                // Apply the velocity to the position of the gem.
+                self.positions[i].0 += self.velocities[i].0;
+                self.positions[i].1 += self.velocities[i].1;
+            }
+        }
+        // Add/expand circles
+        self.circles = self
+            .circles
+            .iter_mut()
+            .map(|circle| (circle.0 + 1, circle.1))
+            .collect();
+        if self.keyframe % 15 == 0 && (self.get_max_keyframe() - self.keyframe) > WARP_KEYFRAMES {
+            let mut rng = rand::thread_rng();
+            let color = match rng.gen_range(0..8) {
+                1 => Color::Rgb(126, 158, 189),
+                2 => Color::Rgb(213, 219, 230),
+                3 => Color::Rgb(190, 96, 105),
+                4 => Color::Rgb(233, 201, 138),
+                5 => Color::Rgb(162, 188, 139),
+                6 => Color::Rgb(207, 135, 111),
+                7 => Color::Rgb(174, 174, 255),
+                _ => Color::Rgb(67, 76, 94),
+            };
+            self.circles.push((0, color))
+        }
+        if self.circles.len() > 5 {
+            self.circles.remove(0);
+        }
+    }
+
+    /// Gets an array of offsets (from the normal position you would print a gem) as integer tuples
+    fn get_offsets(&self) -> Vec<Point<i32>> {
+        self.positions
+            .iter()
+            .map(|x| Point(x.0 as i32, x.1 as i32))
+            .collect()
+    }
+
+    fn get_max_keyframe(&self) -> usize {
+        256
+    }
+
+    fn get_keyframe(&self) -> usize {
+        self.keyframe
+    }
+
+    fn draw_background(&self, printer: &Printer, _: &Vec<Gems>, _: usize, _: &Point<usize>) {
+        self.circles.iter().for_each(|circle| {
+            Warp::draw_circle(
+                printer,
+                Point((printer.size.x / 2) as f32, (printer.size.y / 2) as f32),
+                circle.0 as i32,
+                circle.1,
+            );
+        })
+    }
 }

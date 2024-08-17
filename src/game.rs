@@ -2,6 +2,8 @@
 // TODO: remove the below line once the implementation is complete.
 #![allow(dead_code, unused_variables)]
 
+use std::ops::{Add, Sub};
+
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
@@ -42,9 +44,14 @@ impl Distribution<Gems> for Standard {
 
 /// Specifies a 2D x,y point
 #[derive(Copy, Clone)]
-pub struct Point(pub usize, pub usize);
+pub struct Point<T>(pub T, pub T)
+where
+    T: Add<Output = T> + Sub<Output = T>;
 
-impl std::ops::Add<Point> for Point {
+impl<T> std::ops::Add<Point<T>> for Point<T>
+where
+    T: Add<Output = T> + Sub<Output = T>,
+{
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -52,11 +59,24 @@ impl std::ops::Add<Point> for Point {
     }
 }
 
-impl std::ops::Sub<Point> for Point {
+impl<T> std::ops::Sub<Point<T>> for Point<T>
+where
+    T: Add<Output = T> + Sub<Output = T>,
+{
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
         Point(self.0 - rhs.0, self.1 - rhs.1)
+    }
+}
+
+impl<T> Point<T>
+where
+    T: Add<Output = T> + Sub<Output = T>,
+{
+    pub fn distance_to(from: Point<f32>, to: Point<f32>) -> f32 {
+        let difference = to - from;
+        f32::sqrt(difference.0.powi(2) + difference.1.powi(2))
     }
 }
 
@@ -75,7 +95,7 @@ pub struct Board {
     // Whatever this is resized to, it MUST be a valid power of two.
     data: [Gems; 64],
     // Location of the cursor as a tuple.
-    cursor: Point,
+    cursor: Point<usize>,
     // Current score
     score: u32,
 }
@@ -166,7 +186,7 @@ impl Board {
     }
 
     /// Swaps a gem with any other gem. `source` and `destination` are 2d coordinates.
-    pub fn swap_explicit(&mut self, source: Point, destination: Point) {
+    pub fn swap_explicit(&mut self, source: Point<usize>, destination: Point<usize>) {
         let destination_index = self.point_to_index(destination);
         let source_index = self.point_to_index(source);
         // Stores a to be swapped value in memory.
@@ -177,14 +197,14 @@ impl Board {
     }
 
     /// Returns true if a point [x,y] is in a the board.
-    pub fn is_in_board(&self, point: Point) -> bool {
+    pub fn is_in_board(&self, point: Point<usize>) -> bool {
         point.1 < self.get_width() && point.0 < self.get_width()
     }
 
     /// Finds all gems that match and returns their positions in the board.
     /// This can be used as a "dry run" to highlight any gems that have been matched.
-    pub fn get_matching_gems(&self) -> Vec<Point> {
-        let mut valid_gems: Vec<Point> = Vec::new();
+    pub fn get_matching_gems(&self) -> Vec<Point<usize>> {
+        let mut valid_gems: Vec<Point<usize>> = Vec::new();
         for i in 0..self.data.len() {
             let point = self.index_to_point(i);
             if self.data[i] != Gems::Empty && self.is_matching_gem(self.data.as_ref(), point) {
@@ -222,7 +242,7 @@ impl Board {
     }
 
     /// Returns true if you can make a move on a spot.
-    pub fn is_valid_gem(&self, point: Point) -> bool {
+    pub fn is_valid_gem(&self, point: Point<usize>) -> bool {
         // 1. If we swapped the piece, would we swap it outside of the board? Check each direction to make sure you even *can* swap the piece.
         self.is_valid_move(point, Direction::Left)
             || self.is_valid_move(point, Direction::Right)
@@ -231,7 +251,7 @@ impl Board {
     }
 
     /// Returns true if you can swap a gem, given the gem and direction of swappage.
-    pub fn is_valid_move(&self, point: Point, direction: Direction) -> bool {
+    pub fn is_valid_move(&self, point: Point<usize>, direction: Direction) -> bool {
         // Ensure that we aren't subtracting from a (0,0)
         if point.0 == 0 && direction == Direction::Left
             || point.1 == 0 && direction == Direction::Up
@@ -268,7 +288,7 @@ impl Board {
     ///    - Two pieces to its left/right
     ///    - Two pieces above it/below it
     ///    - One piece on either side horizontally/vertically
-    pub fn is_matching_gem(&self, data: &[Gems], point: Point) -> bool {
+    pub fn is_matching_gem(&self, data: &[Gems], point: Point<usize>) -> bool {
         let point_index = self.point_to_index(point);
         // Two pieces to the left
         if point.0 >= 2
@@ -328,12 +348,12 @@ impl Board {
     }
 
     /// Sets the cursor to a particular point.
-    pub fn set_cursor(&mut self, point: Point) {
+    pub fn set_cursor(&mut self, point: Point<usize>) {
         self.cursor = point;
     }
 
     /// Gets the coordinates of the cursor
-    pub fn get_cursor(&self) -> Point {
+    pub fn get_cursor(&self) -> Point<usize> {
         self.cursor.clone()
     }
 
@@ -343,12 +363,12 @@ impl Board {
     }
 
     /// Converts a Point to an index in self.data.
-    pub fn point_to_index(&self, point: Point) -> usize {
+    pub fn point_to_index(&self, point: Point<usize>) -> usize {
         point.1 * self.get_width() + point.0
     }
 
     /// Converts an index in self.data to a Point.
-    pub fn index_to_point(&self, index: usize) -> Point {
+    pub fn index_to_point(&self, index: usize) -> Point<usize> {
         let row = index / self.get_width();
         Point(index - row * self.get_width(), row)
     }

@@ -23,10 +23,11 @@ pub enum CursorMode {
 pub enum AnimationType {
     Highlight,
     Explosion,
+    Warp,
 }
 
 pub struct Animation {
-    pub point: game::Point,
+    pub point: game::Point<usize>,
     pub duration: u8,
     pub animation_type: AnimationType,
 }
@@ -74,6 +75,15 @@ impl BoardView {
             point: game::Point(0, 0),
             duration: 10,
             animation_type: AnimationType::Explosion,
+        });
+    }
+
+    // Initiates the warp animation
+    pub fn animation_warp(&mut self) {
+        self.animations.push(Animation {
+            point: game::Point(0, 0),
+            duration: 2,
+            animation_type: AnimationType::Warp,
         });
     }
 
@@ -242,6 +252,7 @@ impl cursive::view::View for BoardView {
         // Handle events
         match event {
             Event::Refresh => {
+                let mut initial_level = self.board.get_level() + 1;
                 // Updates animations
                 self.update_animations();
                 let mut exists_running_animation = false;
@@ -272,6 +283,15 @@ impl cursive::view::View for BoardView {
                     .iter()
                     .find(|x| (**x).animation_type == AnimationType::Explosion)
                     .is_none();
+                // Hacks initial_level if there is a warp animation
+                if self
+                    .animations
+                    .iter()
+                    .find(|x| (**x).animation_type == AnimationType::Warp)
+                    .is_some()
+                {
+                    initial_level = level + 1; // Now initial_level != level
+                }
                 EventResult::with_cb(move |s| {
                     s.call_on_name("score", |score_view: &mut TextView| {
                         score_view.set_content(format!("{}", score))
@@ -301,6 +321,16 @@ impl cursive::view::View for BoardView {
                             })
                             .full_screen(),
                         );
+                    }
+                    // Warps if available
+                    if initial_level != level {
+                        let data = s
+                            .call_on_name("board", |b: &mut BoardView| b.board.as_ref().to_vec())
+                            .unwrap();
+                        s.screen_mut().add_fullscreen_layer(
+                            AnimationView::new(crate::animations::Warp::new(data.len(), 1.0), data)
+                                .full_screen(),
+                        )
                     }
                 })
             }
