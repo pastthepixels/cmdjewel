@@ -90,6 +90,13 @@ pub fn init_commands(s: &mut Cursive) {
                     view.animation_warp()
                 });
             }
+            // Other debugging
+            else if command == "autoplay" {
+
+                 s.call_on_name("board", |view: &mut BoardView| {
+                     view.autoplay = !view.autoplay;
+                });
+            }
             // Going to the main menu
             else if command == "main" || command == "m" {
                 show_menu_main(s);

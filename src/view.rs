@@ -46,6 +46,7 @@ pub struct BoardView {
     has_focus: bool,
     animations: Vec<Animation>,
     pub cursor_mode: CursorMode,
+    pub autoplay: bool,
 }
 
 impl BoardView {
@@ -55,6 +56,7 @@ impl BoardView {
             has_focus: false,
             animations: Vec::new(),
             cursor_mode: CursorMode::Normal,
+            autoplay: false,
         }
     }
 
@@ -130,9 +132,17 @@ impl BoardView {
     fn update_board(&mut self) {
         if self.board.is_full() {
             self.board.update_matching_gems();
+        } else {
+            self.board.fill_from_top();
         }
-        self.board.fill_from_top();
         self.board.update_physics_frame();
+        if self.autoplay && self.board.is_full() {
+            self.hint();
+            self.attempt_swap(game::Direction::Left);
+            self.attempt_swap(game::Direction::Right);
+            self.attempt_swap(game::Direction::Up);
+            self.attempt_swap(game::Direction::Down);
+        }
     }
 
     /// Moves the cursor by 1 in any direction and returns an EventResult.
@@ -282,11 +292,16 @@ impl cursive::view::View for BoardView {
                 let score = self.board.get_score();
                 let level = self.board.get_level() + 1;
                 let progress = self.board.get_level_progress() * 100.;
-                let is_valid = self
+                let mut is_valid = self
                     .animations
                     .iter()
                     .find(|x| (**x).animation_type == AnimationType::Explosion)
                     .is_none();
+                // Sets is_valid to true and shuffles if the board is not valid
+                if is_valid == false {
+                    self.board.shuffle();
+                    is_valid = true;
+                }
                 // Hacks initial_level if there is a warp animation
                 if self
                     .animations

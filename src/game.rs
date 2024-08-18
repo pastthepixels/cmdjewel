@@ -6,6 +6,7 @@ use std::ops::{Add, Sub};
 
 use rand::{
     distributions::{Distribution, Standard},
+    seq::SliceRandom,
     Rng,
 };
 
@@ -13,7 +14,7 @@ use rand::{
 const POINTS_SWAP: u8 = 30;
 
 // Specifies how much points you have to acquire before you level up.
-const POINTS_LEVEL: u32 = 2000;
+const POINTS_LEVEL: u32 = 2000; // FIXME: remove two zeros
 
 /// Types of gems to use.
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -134,6 +135,15 @@ impl Board {
         }
     }
 
+    pub fn from_data(data: [Gems; 64]) -> Self {
+        Board {
+            data,
+            cursor: Point(0, 0),
+            score: 0,
+            config: BoardConfig::new_classic(),
+        }
+    }
+
     /// Returns the current level as an integer.
     pub fn get_level(&self) -> u8 {
         (self.score / POINTS_LEVEL) as u8
@@ -164,29 +174,27 @@ impl Board {
             }
         }
         // 2. Loop through that row, and find what slots are empty.
-        let cloned_data = self.data.clone();
         if row_state {
-            for i in 0..self.get_width() {
-                // 3. Add corresponding gems, to the *top*, but only if gems don't already exist there.
-                if Gems::Empty == self.data[row_idx * self.get_width() + i]
-                    && Gems::Empty == self.data[i]
-                {
-                    // Usual game modes just insert random gems.
-                    self.data[i] = rand::random();
-                    // However there are some that require there to always be a valid board...
-                    if self.config.infinite && !self.is_valid() {
-                        // REMINDER: x == i, y == 0
-                        // If left and right are empty, set them to the gem right beneath this one.
-                        if i > 0
-                            && i < self.get_width() - 1
-                            && cloned_data[row_idx * self.get_width() + i + 1] == Gems::Empty
-                            && cloned_data[row_idx * self.get_width() + i - 1] == Gems::Empty
+            // FIXME why am i brute forcing to ensure all gems dropped are valid wtf is wrong with me
+            let initial_data = self.data.clone();
+            let mut iterations = 0;
+            loop {
+                let mut cloned_data = initial_data.clone();
+                let mut empty_spaces = 0;
+                for i in 0..self.get_width() {
+                    // 3. Add corresponding gems, to the *top*, but only if gems don't already exist there.
+                    if Gems::Empty == self.data[row_idx * self.get_width() + i]
+                        && Gems::Empty == self.data[i]
+                    {
+                        self.data[i] = rand::random();
+                        cloned_data[row_idx * self.get_width() + i] = self.data[i];
+                        empty_spaces += 1;
+                        // If we are the second/third from the top, make it match the gem at the top to the left/right
+                        // FIXME this fixes an edge case caused by the way new gems are dropped -- if gems are dropped vertically
+                        if self.config.infinite
+                            && !self.is_valid()
+                            && (row_idx == 1 || row_idx == 2)
                         {
-                            self.data[i + 1] = self.data[row_idx * self.get_width() + i];
-                            self.data[i - 1] = self.data[row_idx * self.get_width() + i];
-                        }
-                        // If not, and we are the second/third from the top, make it match the gem at the top to the left/right
-                        else if row_idx == 2 || row_idx == 3 {
                             self.data[i] = if i != 0 {
                                 self.data[i - 1]
                             } else {
@@ -194,6 +202,16 @@ impl Board {
                             };
                         }
                     }
+                }
+                // check if cloned_data is valid
+                if !self.config.infinite
+                    || (self.config.infinite && Board::from_data(cloned_data).is_valid())
+                    || iterations > (7 as i32).pow(empty_spaces)
+                {
+                    break;
+                } else {
+                    self.data = initial_data.clone();
+                    iterations += 1;
                 }
             }
         }
@@ -214,6 +232,14 @@ impl Board {
                     self.data[i] = Gems::Empty;
                 }
             }
+        }
+    }
+
+    /// Shuffles the board (until we have a valid board).
+    pub fn shuffle(&mut self) {
+        let mut rng = rand::thread_rng();
+        while !self.is_valid() {
+            self.data.shuffle(&mut rng);
         }
     }
 
