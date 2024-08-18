@@ -1,6 +1,6 @@
 use crate::animations::AnimationView;
-use crate::game::Board;
 use crate::game::{self};
+use crate::game::{Board, BoardConfig};
 use crate::ui;
 use cursive::direction::Direction;
 use cursive::event::{Event, EventResult, MouseButton, MouseEvent};
@@ -49,9 +49,9 @@ pub struct BoardView {
 }
 
 impl BoardView {
-    pub fn new() -> Self {
+    pub fn new(config: BoardConfig) -> Self {
         BoardView {
-            board: Board::new(),
+            board: Board::new(config),
             has_focus: false,
             animations: Vec::new(),
             cursor_mode: CursorMode::Normal,
@@ -111,13 +111,15 @@ impl BoardView {
     /// TODO: for moving the board, use reposition_layer
     fn create_animations(&mut self) {
         // Highlight all matching gems
-        self.board.get_matching_gems().iter().for_each(|x| {
-            self.animations.push(Animation {
-                point: *x,
-                duration: 8,
-                animation_type: AnimationType::Highlight,
+        if self.board.is_full() {
+            self.board.get_matching_gems().iter().for_each(|x| {
+                self.animations.push(Animation {
+                    point: *x,
+                    duration: 8,
+                    animation_type: AnimationType::Highlight,
+                });
             });
-        });
+        }
         // Explode if not valid
         if !self.board.is_valid() && self.board.is_full() {
             self.animation_explode();
@@ -126,7 +128,9 @@ impl BoardView {
 
     /// Updates board logic.
     fn update_board(&mut self) {
-        self.board.update_matching_gems();
+        if self.board.is_full() {
+            self.board.update_matching_gems();
+        }
         self.board.fill_from_top();
         self.board.update_physics_frame();
     }

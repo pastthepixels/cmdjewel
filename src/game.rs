@@ -89,23 +89,48 @@ pub enum Direction {
     Down,
 }
 
+/// Configuring cmdjewel boards (for different gamemodes)
+pub struct BoardConfig {
+    pub infinite: bool,
+    pub name: String,
+}
+
+impl BoardConfig {
+    pub fn new_classic() -> Self {
+        BoardConfig {
+            infinite: false,
+            name: "classic".into(),
+        }
+    }
+
+    pub fn new_zen() -> Self {
+        BoardConfig {
+            infinite: true,
+            name: "zen".into(),
+        }
+    }
+}
+
 /// cmdjewel boards.
 pub struct Board {
     // All boards in Bejeweled (and hence, cmdjewel) are 8x8.
-    // Whatever this is resized to, it MUST be a valid power of two.
+    // Whatever this is resized to, it MUST be a valid power of two. (or else we get runtime errors ☹)
     data: [Gems; 64],
     // Location of the cursor as a tuple.
     cursor: Point<usize>,
     // Current score
     score: u32,
+    // Config
+    config: BoardConfig,
 }
 
 impl Board {
-    pub fn new() -> Self {
+    pub fn new(config: BoardConfig) -> Self {
         Board {
             data: [Gems::Empty; 64],
             cursor: Point(0, 0),
             score: 0,
+            config,
         }
     }
 
@@ -139,12 +164,35 @@ impl Board {
             }
         }
         // 2. Loop through that row, and find what slots are empty.
+        let cloned_data = self.data.clone();
         if row_state {
             for i in 0..self.get_width() {
                 // 3. Add corresponding gems, to the *top*, but only if gems don't already exist there.
-                if let Gems::Empty = self.data[row_idx * self.get_width() + i] {
-                    if let Gems::Empty = self.data[i] {
-                        self.data[i] = rand::random(); // TODO: nested ifs; good idea?
+                if Gems::Empty == self.data[row_idx * self.get_width() + i]
+                    && Gems::Empty == self.data[i]
+                {
+                    // Usual game modes just insert random gems.
+                    self.data[i] = rand::random();
+                    // However there are some that require there to always be a valid board...
+                    if self.config.infinite && !self.is_valid() {
+                        // REMINDER: x == i, y == 0
+                        // If left and right are empty, set them to the gem right beneath this one.
+                        if i > 0
+                            && i < self.get_width() - 1
+                            && cloned_data[row_idx * self.get_width() + i + 1] == Gems::Empty
+                            && cloned_data[row_idx * self.get_width() + i - 1] == Gems::Empty
+                        {
+                            self.data[i + 1] = self.data[row_idx * self.get_width() + i];
+                            self.data[i - 1] = self.data[row_idx * self.get_width() + i];
+                        }
+                        // If not, and we are the second/third from the top, make it match the gem at the top to the left/right
+                        else if row_idx == 2 || row_idx == 3 {
+                            self.data[i] = if i != 0 {
+                                self.data[i - 1]
+                            } else {
+                                self.data[i + 1]
+                            };
+                        }
                     }
                 }
             }
@@ -360,6 +408,11 @@ impl Board {
     /// Returns a reference to self.data
     pub fn as_ref(&self) -> &[Gems] {
         self.data.as_ref()
+    }
+
+    /// Returns a reference to Board::config
+    pub fn config_ref(&self) -> &BoardConfig {
+        &self.config
     }
 
     /// Converts a Point to an index in self.data.

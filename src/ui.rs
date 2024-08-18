@@ -1,3 +1,4 @@
+use crate::game::BoardConfig;
 // Handles game UI.
 use crate::view::BoardView;
 use cursive::event::{Event, EventTrigger};
@@ -15,10 +16,10 @@ pub fn show_menu_main(s: &mut Cursive) {
     // Creates a button list
     let buttons = LinearLayout::vertical()
         .child(Button::new("Classic", |s| {
-            show_game(s);
+            show_game(s, BoardConfig::new_classic());
         }))
         .child(Button::new("Zen", |s| {
-            show_game(s);
+            show_game(s, BoardConfig::new_zen());
         }));
     // Adds the dialog
     s.add_layer(
@@ -29,8 +30,9 @@ pub fn show_menu_main(s: &mut Cursive) {
 }
 
 // Game
-pub fn show_game(s: &mut Cursive) {
+pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     s.pop_layer();
+    let name = config.name.clone();
     // Creates the layout for the dialog
     let layout = LinearLayout::vertical()
         .child(
@@ -51,7 +53,7 @@ pub fn show_game(s: &mut Cursive) {
                         }))
                         .child(LinearLayout::vertical().child(Button::new("Quit", show_menu_main))),
                 ))
-                .child(Panel::new(NamedView::new("board", BoardView::new()))),
+                .child(Panel::new(NamedView::new("board", BoardView::new(config)))),
         )
         .child(cursive::views::PaddedView::lrtb(
             1,
@@ -62,7 +64,7 @@ pub fn show_game(s: &mut Cursive) {
         ));
 
     // Creates the dialog
-    let game_dialog = Dialog::around(layout).title("classic"); // TODO: rename to zen when appropriate
+    let game_dialog = Dialog::around(layout).title(name); // TODO: rename to zen when appropriate
 
     // Adds the dialog into a new layer
     s.add_layer(game_dialog);
@@ -98,9 +100,11 @@ pub fn init_commands(s: &mut Cursive) {
                 || command == "p"
                 || command == "p classic"
             {
-                show_game(s);
+                show_game(s, BoardConfig::new_classic());
             }
-            // TODO: play zen
+            else if command == "play zen" || command == "p zen" {
+                show_game(s, BoardConfig::new_zen());
+            }
             // Vim keys
             else if command == "q"
                 || command == "qa"
