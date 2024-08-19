@@ -1,52 +1,32 @@
 name: Rust (release)
 
-# note: much of this is from https://dzfrias.dev/blog/deploy-rust-cross-platform-github-actions/
-# idk how this works
-
-permissions:
-  contents: write
+# copied and pasted from https://github.com/rust-build/rust-build.action
+# because i still don't know how this works
 
 on:
   release:
     types: [created]
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
-  build-and-upload:
-    name: Build and upload
-    runs-on: ${{ matrix.os }}
-
+  release:
+    name: release ${{ matrix.target }}
+    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - build: linux
-            os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-
-          - build: macos
-            os: macos-latest
-            target: x86_64-apple-darwin
-      
+          - target: x86_64-pc-windows-gnu
+            archive: zip
+          - target: x86_64-unknown-linux-musl
+            archive: tar.gz tar.xz tar.zst
+          - target: x86_64-apple-darwin
+            archive: zip
     steps:
-      - name: Clone repository
-        uses: actions/checkout@v3
-  
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@master
+      - name: Compile and release
+        uses: rust-build/rust-build.action@v1.4.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          targets: ${{ matrix.target }}
-          
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: build
-          args: --verbose --release --target ${{ matrix.target }}
-      
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            ${{ env.ASSET }}
+          RUSTTARGET: ${{ matrix.target }}
+          ARCHIVE_TYPES: ${{ matrix.archive }}
