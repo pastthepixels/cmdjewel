@@ -117,6 +117,7 @@ pub struct Board {
     // All boards in Bejeweled (and hence, cmdjewel) are 8x8.
     // Whatever this is resized to, it MUST be a valid power of two. (or else we get runtime errors ☹)
     data: [Gems; 64],
+    buffer: [Gems; 64],
     // Location of the cursor as a tuple.
     cursor: Point<usize>,
     // Current score
@@ -129,6 +130,7 @@ impl Board {
     pub fn new(config: BoardConfig) -> Self {
         Board {
             data: [Gems::Empty; 64],
+            buffer: [Gems::Empty; 64],
             cursor: Point(0, 0),
             score: 0,
             config,
@@ -138,6 +140,7 @@ impl Board {
     pub fn from_data(data: [Gems; 64]) -> Self {
         Board {
             data,
+            buffer: [Gems::Empty; 64],
             cursor: Point(0, 0),
             score: 0,
             config: BoardConfig::new_classic(),
@@ -160,77 +163,85 @@ impl Board {
         self.score
     }
 
-    /// Adds gems to the top row such that, if the gems fell, the lowest non-filled row is filled.
-    pub fn fill_from_top(&mut self) {
-        // 1. Find the first row from the bottom that has at least 1 empty spot.
-        let mut row_idx = self.get_width();
-        let mut row_state = false;
-        while row_idx > 0 && row_state != true {
-            row_idx -= 1;
-            for i in 0..self.get_width() {
-                if let Gems::Empty = self.data[row_idx * self.get_width() + i] {
-                    row_state = true;
-                }
+    /// Fills the buffer:
+    ///        a. Clone data and make everything fall down.
+    ///        b. Insert new gems until everything is valid (brute force)
+    ///        c. Record the gems we inserted and their positions in the gem buffer.
+    pub fn fill_gem_buffer(&mut self) {
+        // 1. Clone data and make everything fall down.
+        let mut data_clone = self.data.clone();
+        for i in (0..data_clone.len()).rev() {
+            let point = self.index_to_point(i);
+            while i + self.get_width() < data_clone.len()
+                && data_clone[i + self.get_width()] == Gems::Empty
+                && data_clone[i] != Gems::Empty
+            {
+                data_clone[i + self.get_width()] = data_clone[i];
+                data_clone[i] = Gems::Empty;
             }
         }
-        // 2. Loop through that row, and find what slots are empty.
-        if row_state {
-            // FIXME why am i brute forcing to ensure all gems dropped are valid wtf is wrong with me
-            let initial_data = self.data.clone();
-            let mut iterations = 0;
-            loop {
-                let mut cloned_data = initial_data.clone();
-                let mut empty_spaces = 0;
-                for i in 0..self.get_width() {
-                    // 3. Add corresponding gems, to the *top*, but only if gems don't already exist there.
-                    if Gems::Empty == self.data[row_idx * self.get_width() + i]
-                        && Gems::Empty == self.data[i]
-                    {
-                        self.data[i] = rand::random();
-                        cloned_data[row_idx * self.get_width() + i] = self.data[i];
-                        empty_spaces += 1;
-                        // If we are the second/third from the top, make it match the gem at the top to the left/right
-                        // FIXME this fixes an edge case caused by the way new gems are dropped -- if gems are dropped vertically
-                        if self.config.infinite
-                            && !self.is_valid()
-                            && (row_idx == 1 || row_idx == 2)
-                        {
-                            self.data[i] = if i != 0 {
-                                self.data[i - 1]
-                            } else {
-                                self.data[i + 1]
-                            };
-                        }
+        // 2. Insert new gems until everything is valid (brute force)
+        let mut iterations = 0;
+        loop {
+            // Consider some case starting from data_clone
+            let case: [Gems; 64] = data_clone
+                .into_iter()
+                .map(|gem| {
+                    if gem == Gems::Empty {
+                        let gem = rand::random();
+                        gem
+                    } else {
+                        gem
+                    }
+                })
+                .collect::<Vec<Gems>>()
+                .try_into()
+                .unwrap_or([Gems::Empty; 64]);
+
+            // check if the case is valid
+            if !self.config.infinite
+                || (self.config.infinite && Board::from_data(case).is_valid())
+                || iterations > (7 as i32).pow(8)
+            {
+                // Record the gems we inserted and their positions in the gem buffer.
+                for i in 0..case.len() {
+                    if case[i] != data_clone[i] {
+                        self.buffer[i] = case[i];
                     }
                 }
-                // check if cloned_data is valid
-                if !self.config.infinite
-                    || (self.config.infinite && Board::from_data(cloned_data).is_valid())
-                    || iterations > (7 as i32).pow(empty_spaces)
-                {
-                    break;
-                } else {
-                    self.data = initial_data.clone();
-                    iterations += 1;
-                }
+                break;
+            } else {
+                iterations += 1;
             }
         }
     }
 
-    /// Updates all physics by one frame.
-    /// Follows the algorithm:
-    /// - Start on the bottom-most row.
-    /// 1. For all gems in the row, check if the space below them is empty.
-    ///     - If it is empty, swap the gem with the space below it.
-    ///     - Repeat step 2 for each gem in the row and remember that we found an empty space.
-    /// 2. If no spaces in the row were empty, move up one row and then repeat step 1.
-    pub fn update_physics_frame(&mut self) {
+    /// Slides gems down by 1, and fill the topmost empty row with the lowest row from the buffer.
+    pub fn slide_down(&mut self) {
+        // Slides gems down by 1
         for i in (0..self.data.len()).rev() {
             if i + self.get_width() < self.data.len() {
                 if let Gems::Empty = self.data[i + self.get_width()] {
                     self.data[i + self.get_width()] = self.data[i];
                     self.data[i] = Gems::Empty;
                 }
+            }
+        }
+        // Fills topmost row
+        // Loops vertically
+        for i in (0..self.get_width()).rev() {
+            let mut non_empty_found = false;
+            // Then horizontally
+            for j in 0..self.get_width() {
+                let index = self.point_to_index(Point(j, i));
+                if self.buffer[index] != Gems::Empty {
+                    non_empty_found = true;
+                    self.data[j] = self.buffer[index];
+                    self.buffer[index] = Gems::Empty;
+                }
+            }
+            if non_empty_found {
+                break;
             }
         }
     }

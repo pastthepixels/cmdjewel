@@ -132,10 +132,10 @@ impl BoardView {
     fn update_board(&mut self) {
         if self.board.is_full() {
             self.board.update_matching_gems();
-        } else {
-            self.board.fill_from_top();
         }
-        self.board.update_physics_frame();
+        self.board.fill_gem_buffer();
+        self.board.slide_down();
+        //self.board.update_physics_frame();
         if self.autoplay && self.board.is_full() {
             self.hint();
             self.attempt_swap(game::Direction::Left);
@@ -298,7 +298,7 @@ impl cursive::view::View for BoardView {
                     .find(|x| (**x).animation_type == AnimationType::Explosion)
                     .is_none();
                 // Sets is_valid to true and shuffles if the board is not valid
-                if is_valid == false {
+                if is_valid == false && self.board.config_ref().infinite {
                     self.board.shuffle();
                     is_valid = true;
                 }
