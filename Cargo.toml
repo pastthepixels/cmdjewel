@@ -1,0 +1,8 @@
+[package]
+name = "cmdjewel-rewrite"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cursive = "0.21.1"
+rand = "0.8.5"
