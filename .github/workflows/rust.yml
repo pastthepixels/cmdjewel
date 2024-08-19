@@ -1,4 +1,4 @@
-name: Rust
+name: Rust (release)
 
 # note: much of this is from https://dzfrias.dev/blog/deploy-rust-cross-platform-github-actions/
 # idk how this works
@@ -7,10 +7,6 @@ permissions:
   contents: write
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
   release:
     types: [created]
 
