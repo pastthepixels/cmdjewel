@@ -3,14 +3,12 @@ use crate::game::{self};
 use crate::game::{Board, BoardConfig};
 use crate::ui;
 use cursive::direction::Direction;
-use cursive::event::{Event, EventResult, MouseButton, MouseEvent};
-use cursive::theme::{BaseColor, Color, ColorStyle};
+use cursive::event::{Event, EventResult};
+use cursive::theme::{Color, ColorStyle};
 use cursive::traits::Resizable;
 use cursive::view::CannotFocus;
-use cursive::view::IntoBoxedView;
-use cursive::views::stack_view::{Fullscreen, LayerConfig, Transparent};
 use cursive::views::{Dialog, ProgressBar, TextView};
-use cursive::{traits, Cursive, Printer, Vec2};
+use cursive::{Printer, Vec2};
 
 /// Cursor modes
 pub enum CursorMode {
