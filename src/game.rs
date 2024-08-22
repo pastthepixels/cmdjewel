@@ -262,10 +262,6 @@ impl Board {
 
     /// Swaps a gem with a gem in an adjacent direction, which points from the destination from the cursor. **Wrapper for private Board.swap.**
     pub fn swap(&mut self, direction: Direction) {
-        // If the cursor is on a hypercube, store the direction of swappage.
-        if let Gems::Hypercube(_) = self.data[self.point_to_index(self.cursor)] {
-            self.data[self.point_to_index(self.cursor)] = Gems::Hypercube(Some(direction));
-        }
         // Get a destination point from the direction
         let destination = match direction {
             Direction::Left => self.cursor - Point(1, 0),
@@ -273,6 +269,15 @@ impl Board {
             Direction::Up => self.cursor - Point(0, 1),
             Direction::Down => self.cursor + Point(0, 1),
         };
+        // If the cursor is on a hypercube, store the direction of swappage.
+        if let Gems::Hypercube(_) = self.data[self.point_to_index(self.cursor)] {
+            self.data[self.point_to_index(self.cursor)] = Gems::Hypercube(Some(direction));
+        }
+        // If we are swapping *with* a hypercube, store the direction of swappage.
+        if let Gems::Hypercube(_) = self.data[self.point_to_index(destination)] {
+            self.data[self.point_to_index(destination)] = Gems::Hypercube(Some(direction));
+        }
+        // Otherwise swap the gems
         self.swap_explicit(self.cursor.clone(), destination)
     }
 
