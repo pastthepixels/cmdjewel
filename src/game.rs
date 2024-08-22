@@ -2,7 +2,10 @@
 // TODO: remove the below line once the implementation is complete.
 #![allow(dead_code, unused_variables)]
 
-use std::ops::{Add, Sub};
+use std::{
+    collections::HashMap,
+    ops::{Add, Sub},
+};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -27,6 +30,9 @@ pub enum Gems {
     Green,
     Orange,
     Purple,
+    /// Special gems
+    // Hypercube (with direction it was swapped *to*)
+    Hypercube(Option<Direction>),
 }
 
 impl Distribution<Gems> for Standard {
@@ -256,6 +262,11 @@ impl Board {
 
     /// Swaps a gem with a gem in an adjacent direction, which points from the destination from the cursor. **Wrapper for private Board.swap.**
     pub fn swap(&mut self, direction: Direction) {
+        // If the cursor is on a hypercube, store the direction of swappage.
+        if let Gems::Hypercube(_) = self.data[self.point_to_index(self.cursor)] {
+            self.data[self.point_to_index(self.cursor)] = Gems::Hypercube(Some(direction));
+        }
+        // Get a destination point from the direction
         let destination = match direction {
             Direction::Left => self.cursor - Point(1, 0),
             Direction::Right => self.cursor + Point(1, 0),
@@ -292,7 +303,25 @@ impl Board {
         let mut valid_gems: Vec<Point<usize>> = Vec::new();
         for i in 0..self.data.len() {
             let point = self.index_to_point(i);
-            if self.data[i] != Gems::Empty && self.is_matching_gem(self.data.as_ref(), point) {
+            // check for hypercubes
+            if let Gems::Hypercube(dir) = self.data[i] {
+                if dir.is_some() {
+                    let position: Point<usize> = match dir.unwrap() {
+                        Direction::Left => point + Point(1, 0),
+                        Direction::Right => point - Point(1, 0),
+                        Direction::Up => point - Point(0, 1),
+                        Direction::Down => point + Point(0, 1),
+                    };
+                    let gem = self.data[self.point_to_index(position)];
+                    for j in 0..self.data.len() {
+                        if self.data[j] == gem {
+                            valid_gems.push(self.index_to_point(j));
+                        }
+                    }
+                    valid_gems.push(point);
+                }
+            } else if self.data[i] != Gems::Empty && self.is_matching_gem(self.data.as_ref(), point)
+            {
                 valid_gems.push(point);
             }
         }
@@ -304,10 +333,51 @@ impl Board {
     /// - Adds points for each matching gem.
     /// - Adds special gems if applicable.
     pub fn update_matching_gems(&mut self) {
-        self.get_matching_gems().iter().for_each(|point| {
+        let matching_gems = self.get_matching_gems();
+        // Check for special gems
+        // One-directional chains (flame gems, hypercubes, supernova gems)
+        let mut chains: Vec<Vec<Point<usize>>> = Vec::new();
+        matching_gems.iter().for_each(|point| {
+            let mut chain_found = false;
+            chains.iter_mut().for_each(|chain| {
+                let first = chain.first().unwrap();
+                let last = chain.last().unwrap();
+                if self.data[self.point_to_index(*point)] == self.data[self.point_to_index(*first)]
+                {
+                    // Horizontal chain
+                    if point.1 == first.1
+                        && ((point.0 as i32 - first.0 as i32).abs() == 1
+                            || (point.0 as i32 - last.0 as i32).abs() == 1)
+                    {
+                        chain.push(*point);
+                        chain_found = true;
+                    }
+                    // Vertical chain
+                    else if point.0 == first.0
+                        && ((point.1 as i32 - first.1 as i32).abs() == 1
+                            || (point.1 as i32 - last.1 as i32).abs() == 1)
+                    {
+                        chain.push(*point);
+                        chain_found = true;
+                    }
+                }
+            });
+            // if no chains have been found, create a new one
+            if !chain_found {
+                chains.push(vec![*point]);
+            }
+        });
+        // Set every gem to empty
+        matching_gems.iter().for_each(|point| {
             self.data[self.point_to_index(*point)] = Gems::Empty;
             self.score += POINTS_SWAP as u32;
-        })
+        });
+        // Iterate over the chains and add special gems.
+        chains.iter().for_each(|chain| {
+            if chain.len() == 5 {
+                self.data[self.point_to_index(chain[0])] = Gems::Hypercube(None);
+            }
+        });
     }
 
     /// Returns true if the entire board is filled with gems.
@@ -328,11 +398,16 @@ impl Board {
 
     /// Returns true if you can make a move on a spot.
     pub fn is_valid_gem(&self, point: Point<usize>) -> bool {
-        // 1. If we swapped the piece, would we swap it outside of the board? Check each direction to make sure you even *can* swap the piece.
-        self.is_valid_move(point, Direction::Left)
-            || self.is_valid_move(point, Direction::Right)
-            || self.is_valid_move(point, Direction::Up)
-            || self.is_valid_move(point, Direction::Down)
+        // If we swapped the piece, would we swap it outside of the board? Check each direction to make sure you even *can* swap the piece.
+        // also: Hypercubes can be matched with anything!
+        if let Gems::Hypercube(_) = self.data[self.point_to_index(point)] {
+            true
+        } else {
+            self.is_valid_move(point, Direction::Left)
+                || self.is_valid_move(point, Direction::Right)
+                || self.is_valid_move(point, Direction::Up)
+                || self.is_valid_move(point, Direction::Down)
+        }
     }
 
     /// Returns true if you can swap a gem, given the gem and direction of swappage.
@@ -413,6 +488,9 @@ impl Board {
             && data[self.point_to_index(point - Point(0, 1))] == data[point_index]
             && data[self.point_to_index(point + Point(0, 1))] == data[point_index]
         {
+            true
+        // Special gems!
+        } else if let Gems::Hypercube(_) = self.data[point_index] {
             true
         } else {
             false

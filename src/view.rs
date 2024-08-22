@@ -185,6 +185,8 @@ impl BoardView {
             game::Gems::Green => "⬟",
             game::Gems::Orange => "⬢",
             game::Gems::Purple => "▲",
+            // Special gems
+            game::Gems::Hypercube(_) => "💠",
         }
         .into()
     }
@@ -205,6 +207,10 @@ impl BoardView {
             }
             game::Gems::Purple => {
                 ColorStyle::new(Color::Rgb(174, 174, 255), Color::Rgb(46, 52, 64))
+            }
+            // Special gems
+            game::Gems::Hypercube(_) => {
+                ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64))
             }
         }
     }
