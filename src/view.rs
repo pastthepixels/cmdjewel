@@ -178,14 +178,18 @@ impl BoardView {
     pub fn gem_string(gem: game::Gem) -> String {
         match gem {
             game::Gem::Empty => "•",
-            game::Gem::Blue => "▼",
-            game::Gem::White => "●",
-            game::Gem::Red => "■",
-            game::Gem::Yellow => "◆",
-            game::Gem::Green => "⬟",
-            game::Gem::Orange => "⬢",
-            game::Gem::Purple => "▲",
-            // Special gems
+            game::Gem::Normal(x) => match x {
+                game::GemColor::Blue => "▼",
+                game::GemColor::White => "●",
+                game::GemColor::Red => "■",
+                game::GemColor::Yellow => "◆",
+                game::GemColor::Green => "⬟",
+                game::GemColor::Orange => "⬢",
+                game::GemColor::Purple => "▲",
+            },
+            game::Gem::Flame(_) => "F",
+            game::Gem::Star(_) => "s",
+            game::Gem::Supernova(_) => "S",
             game::Gem::Hypercube(_) => "💠",
         }
         .into()
@@ -195,16 +199,39 @@ impl BoardView {
     pub fn gem_color(gem: game::Gem) -> ColorStyle {
         match gem {
             game::Gem::Empty => ColorStyle::new(Color::Rgb(67, 76, 94), Color::Rgb(46, 52, 64)),
-            game::Gem::Blue => ColorStyle::new(Color::Rgb(126, 158, 189), Color::Rgb(46, 52, 64)),
-            game::Gem::White => ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64)),
-            game::Gem::Red => ColorStyle::new(Color::Rgb(190, 96, 105), Color::Rgb(46, 52, 64)),
-            game::Gem::Yellow => ColorStyle::new(Color::Rgb(233, 201, 138), Color::Rgb(46, 52, 64)),
-            game::Gem::Green => ColorStyle::new(Color::Rgb(162, 188, 139), Color::Rgb(46, 52, 64)),
-            game::Gem::Orange => ColorStyle::new(Color::Rgb(207, 135, 111), Color::Rgb(46, 52, 64)),
-            game::Gem::Purple => ColorStyle::new(Color::Rgb(174, 174, 255), Color::Rgb(46, 52, 64)),
-            // Special gems
+            game::Gem::Normal(x) => BoardView::colorstyle_from_gemcolor(x),
+            game::Gem::Flame(x) => BoardView::colorstyle_from_gemcolor(x),
+            game::Gem::Star(x) => BoardView::colorstyle_from_gemcolor(x),
+            game::Gem::Supernova(x) => BoardView::colorstyle_from_gemcolor(x),
             game::Gem::Hypercube(_) => {
                 ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64))
+            }
+        }
+    }
+
+    /// Returns a ColorStyle from a game::GemColor
+    fn colorstyle_from_gemcolor(gem_color: game::GemColor) -> ColorStyle {
+        match gem_color {
+            game::GemColor::Blue => {
+                ColorStyle::new(Color::Rgb(126, 158, 189), Color::Rgb(46, 52, 64))
+            }
+            game::GemColor::White => {
+                ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64))
+            }
+            game::GemColor::Red => {
+                ColorStyle::new(Color::Rgb(190, 96, 105), Color::Rgb(46, 52, 64))
+            }
+            game::GemColor::Yellow => {
+                ColorStyle::new(Color::Rgb(233, 201, 138), Color::Rgb(46, 52, 64))
+            }
+            game::GemColor::Green => {
+                ColorStyle::new(Color::Rgb(162, 188, 139), Color::Rgb(46, 52, 64))
+            }
+            game::GemColor::Orange => {
+                ColorStyle::new(Color::Rgb(207, 135, 111), Color::Rgb(46, 52, 64))
+            }
+            game::GemColor::Purple => {
+                ColorStyle::new(Color::Rgb(174, 174, 255), Color::Rgb(46, 52, 64))
             }
         }
     }

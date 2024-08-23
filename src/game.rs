@@ -20,6 +20,21 @@ const POINTS_LEVEL: u32 = 2000; // FIXME: remove two zeros
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Gem {
     Empty,
+    // Normal gems.
+    Normal(GemColor),
+    // Flame gems.
+    Flame(GemColor),
+    // Star gems.
+    Star(GemColor),
+    // Suprnova gems.
+    Supernova(GemColor),
+    // Hypercube (with direction it was swapped *to*)
+    Hypercube(Option<GemColor>),
+}
+
+/// Gem colors. These are not associated with any special abilities nor do they include special gems (e.g. hypercubes)
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum GemColor {
     Blue,
     White,
     Red,
@@ -27,34 +42,31 @@ pub enum Gem {
     Green,
     Orange,
     Purple,
-    /// Special gems
-    // Hypercube (with direction it was swapped *to*)
-    Hypercube(Option<Direction>),
 }
 
 impl Distribution<Gem> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Gem {
-        match rng.gen_range(0..=6) {
-            0 => Gem::Blue,
-            1 => Gem::White,
-            2 => Gem::Red,
-            3 => Gem::Yellow,
-            4 => Gem::Green,
-            5 => Gem::Orange,
-            _ => Gem::Purple,
-        }
+        Gem::Normal(match rng.gen_range(0..=6) {
+            0 => GemColor::Blue,
+            1 => GemColor::White,
+            2 => GemColor::Red,
+            3 => GemColor::Yellow,
+            4 => GemColor::Green,
+            5 => GemColor::Orange,
+            _ => GemColor::Purple,
+        })
     }
 }
 
 /// Specifies a 2D x,y point
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Point<T>(pub T, pub T)
 where
-    T: Add<Output = T> + Sub<Output = T>;
+    T: Add<Output = T> + Sub<Output = T> + PartialEq;
 
 impl<T> std::ops::Add<Point<T>> for Point<T>
 where
-    T: Add<Output = T> + Sub<Output = T>,
+    T: Add<Output = T> + Sub<Output = T> + PartialEq,
 {
     type Output = Self;
 
@@ -65,7 +77,7 @@ where
 
 impl<T> std::ops::Sub<Point<T>> for Point<T>
 where
-    T: Add<Output = T> + Sub<Output = T>,
+    T: Add<Output = T> + Sub<Output = T> + PartialEq,
 {
     type Output = Self;
 
@@ -76,7 +88,7 @@ where
 
 impl<T> Point<T>
 where
-    T: Add<Output = T> + Sub<Output = T>,
+    T: Add<Output = T> + Sub<Output = T> + PartialEq,
 {
     pub fn distance_to(from: Point<f32>, to: Point<f32>) -> f32 {
         let difference = to - from;
@@ -268,11 +280,13 @@ impl Board {
         };
         // If the cursor is on a hypercube, store the direction of swappage.
         if let Gem::Hypercube(_) = self.data[self.point_to_index(self.cursor)] {
-            self.data[self.point_to_index(self.cursor)] = Gem::Hypercube(Some(direction));
+            self.data[self.point_to_index(self.cursor)] =
+                Gem::Hypercube(self.color_at_point(&self.data, destination));
         }
         // If we are swapping *with* a hypercube, store the direction of swappage.
         if let Gem::Hypercube(_) = self.data[self.point_to_index(destination)] {
-            self.data[self.point_to_index(destination)] = Gem::Hypercube(Some(direction));
+            self.data[self.point_to_index(destination)] =
+                Gem::Hypercube(self.color_at_point(&self.data, self.cursor));
         }
         // Otherwise swap the gems
         self.swap_explicit(self.cursor.clone(), destination)
@@ -305,26 +319,48 @@ impl Board {
         let mut valid_gems: Vec<Point<usize>> = Vec::new();
         for i in 0..self.data.len() {
             let point = self.index_to_point(i);
-            // check for hypercubes
-            if let Gem::Hypercube(dir) = self.data[i] {
-                if dir.is_some() {
-                    let position: Point<usize> = match dir.unwrap() {
-                        Direction::Left => point + Point(1, 0),
-                        Direction::Right => point - Point(1, 0),
-                        Direction::Up => point - Point(0, 1),
-                        Direction::Down => point + Point(0, 1),
-                    };
-                    let gem = self.data[self.point_to_index(position)];
-                    for j in 0..self.data.len() {
-                        if self.data[j] == gem {
-                            valid_gems.push(self.index_to_point(j));
+            match self.data[i] {
+                Gem::Hypercube(color) => {
+                    if color.is_some() {
+                        for j in 0..self.data.len() {
+                            if Board::color_at_index(&self.data, j) == color {
+                                valid_gems.push(self.index_to_point(j));
+                            }
                         }
+                        valid_gems.push(point);
                     }
-                    valid_gems.push(point);
                 }
-            } else if self.data[i] != Gem::Empty && self.is_matching_gem(self.data.as_ref(), point)
-            {
-                valid_gems.push(point);
+                Gem::Normal(color) => {
+                    if self.is_matching_gem(self.data.as_ref(), point)
+                        && !valid_gems.contains(&point)
+                    {
+                        valid_gems.push(point);
+                    }
+                }
+                Gem::Flame(color) => {
+                    if self.is_matching_gem(self.data.as_ref(), point) {
+                        // Add the flame gem to the list of matching gems...
+                        valid_gems.push(point);
+                        // And add all adjacent gems.
+                        [
+                            point - Point(1, 0),
+                            point - Point(1, 1),
+                            point - Point(0, 1),
+                            point + Point(1, 0),
+                            point + Point(1, 1),
+                            point + Point(0, 1),
+                            (point + Point(1, 0)) - Point(0, 1),
+                            (point + Point(0, 1)) - Point(1, 0),
+                        ]
+                        .iter()
+                        .for_each(|point| {
+                            if self.is_in_board(*point) && !valid_gems.contains(point) {
+                                valid_gems.push(*point);
+                            }
+                        })
+                    }
+                }
+                _ => {}
             }
         }
         valid_gems
@@ -370,12 +406,18 @@ impl Board {
             }
         });
         // Set every gem to empty
+        // TODO: memcpy should be finnnee but make it faster
+        let data_clone = self.data.clone();
         matching_gems.iter().for_each(|point| {
             self.data[self.point_to_index(*point)] = Gem::Empty;
             self.score += POINTS_SWAP as u32;
         });
         // Iterate over the chains and add special gems.
         chains.iter().for_each(|chain| {
+            if chain.len() == 4 {
+                self.data[self.point_to_index(chain[0])] =
+                    Gem::Flame(self.color_at_point(&data_clone, chain[0]).unwrap());
+            }
             if chain.len() == 5 {
                 self.data[self.point_to_index(chain[0])] = Gem::Hypercube(None);
             }
@@ -452,43 +494,44 @@ impl Board {
     ///    - One piece on either side horizontally/vertically
     pub fn is_matching_gem(&self, data: &[Gem], point: Point<usize>) -> bool {
         let point_index = self.point_to_index(point);
+        let point_color = Board::color_at_index(data, point_index);
         // Two pieces to the left
         if point.0 >= 2
-            && data[self.point_to_index(point - Point(1, 0))] == data[point_index]
-            && data[self.point_to_index(point - Point(2, 0))] == data[point_index]
+            && self.color_at_point(data, point - Point(1, 0)) == point_color
+            && self.color_at_point(data, point - Point(2, 0)) == point_color
         {
             true
         // Two pieces to the right
         } else if self.is_in_board(point + Point(2, 0))
-            && data[self.point_to_index(point + Point(1, 0))] == data[point_index]
-            && data[self.point_to_index(point + Point(2, 0))] == data[point_index]
+            && self.color_at_point(data, point + Point(1, 0)) == point_color
+            && self.color_at_point(data, point + Point(2, 0)) == point_color
         {
             true
         // Two pieces below it
         } else if self.is_in_board(point + Point(0, 2))
-            && data[self.point_to_index(point + Point(0, 1))] == data[point_index]
-            && data[self.point_to_index(point + Point(0, 2))] == data[point_index]
+            && self.color_at_point(data, point + Point(0, 1)) == point_color
+            && self.color_at_point(data, point + Point(0, 2)) == point_color
         {
             true
         // Two pieces above it
         } else if point.1 >= 2
-            && data[self.point_to_index(point - Point(0, 1))] == data[point_index]
-            && data[self.point_to_index(point - Point(0, 2))] == data[point_index]
+            && self.color_at_point(data, point - Point(0, 1)) == point_color
+            && self.color_at_point(data, point - Point(0, 2)) == point_color
         {
             true
         // Horizontal middle
         } else if point.0 >= 1
             && self.is_in_board(point + Point(1, 0))
-            && data[self.point_to_index(point - Point(1, 0))] == data[point_index]
-            && data[self.point_to_index(point + Point(1, 0))] == data[point_index]
+            && self.color_at_point(data, point - Point(1, 0)) == point_color
+            && self.color_at_point(data, point + Point(1, 0)) == point_color
         {
             true
         // Vertical middle
         } else if point.1 >= 1
             && self.is_in_board(point - Point(0, 1))
             && self.is_in_board(point + Point(0, 1))
-            && data[self.point_to_index(point - Point(0, 1))] == data[point_index]
-            && data[self.point_to_index(point + Point(0, 1))] == data[point_index]
+            && self.color_at_point(data, point - Point(0, 1)) == point_color
+            && self.color_at_point(data, point + Point(0, 1)) == point_color
         {
             true
         // Special gems!
@@ -541,5 +584,21 @@ impl Board {
     pub fn index_to_point(&self, index: usize) -> Point<usize> {
         let row = index / self.get_width();
         Point(index - row * self.get_width(), row)
+    }
+
+    /// Gets a gem color at an index.
+    pub fn color_at_index(data: &[Gem], index: usize) -> Option<GemColor> {
+        match data[index] {
+            Gem::Normal(x) => Some(x),
+            Gem::Flame(x) => Some(x),
+            Gem::Star(x) => Some(x),
+            Gem::Supernova(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    /// Gets a gem color at a point.
+    pub fn color_at_point(&self, data: &[Gem], point: Point<usize>) -> Option<GemColor> {
+        Board::color_at_index(data, self.point_to_index(point))
     }
 }
