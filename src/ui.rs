@@ -1,13 +1,12 @@
 use crate::game::BoardConfig;
 // Handles game UI.
 use crate::view::BoardView;
-use cursive::event::{Event};
+use cursive::event::Event;
 use cursive::view::{Nameable, Resizable};
 use cursive::views::{
-    Button, Dialog, EditView, LinearLayout, NamedView, OnEventView, Panel,
-    ProgressBar, TextView,
+    Button, Dialog, EditView, LinearLayout, NamedView, OnEventView, Panel, ProgressBar, TextView,
 };
-use cursive::{Cursive, View};
+use cursive::Cursive;
 
 // Menus
 pub fn show_menu_main(s: &mut Cursive) {

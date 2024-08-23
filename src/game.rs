@@ -284,12 +284,14 @@ impl Board {
                 Gem::Hypercube(self.color_at_point(&self.data, destination));
         }
         // If we are swapping *with* a hypercube, store the direction of swappage.
-        if let Gem::Hypercube(_) = self.data[self.point_to_index(destination)] {
+        else if let Gem::Hypercube(_) = self.data[self.point_to_index(destination)] {
             self.data[self.point_to_index(destination)] =
                 Gem::Hypercube(self.color_at_point(&self.data, self.cursor));
         }
         // Otherwise swap the gems
-        self.swap_explicit(self.cursor.clone(), destination)
+        else {
+            self.swap_explicit(self.cursor.clone(), destination)
+        }
     }
 
     /// Gets the width (=height) of the board.
@@ -313,53 +315,7 @@ impl Board {
         point.1 < self.get_width() && point.0 < self.get_width()
     }
 
-    /// Finda all the gems that are to be removed because of a special gem matching.
-    /// Runs iteratively in case a special gem matches with another special gem.
-    pub fn get_matching_special_gems(&self) -> Vec<Point<usize>> {
-        let mut valid_gems: Vec<Point<usize>> = Vec::new();
-        for i in 0..self.data.len() {
-            let point = self.index_to_point(i);
-            match self.data[i] {
-                Gem::Hypercube(color) => {
-                    if color.is_some() {
-                        for j in 0..self.data.len() {
-                            if Board::color_at_index(&self.data, j) == color {
-                                valid_gems.push(self.index_to_point(j));
-                            }
-                        }
-                        valid_gems.push(point);
-                    }
-                }
-                Gem::Flame(color) => {
-                    if self.is_matching_gem(self.data.as_ref(), point) {
-                        // Add the flame gem to the list of matching gems...
-                        valid_gems.push(point);
-                        // And add all adjacent gems.
-                        [
-                            point - Point(1, 0),
-                            point - Point(1, 1),
-                            point - Point(0, 1),
-                            point + Point(1, 0),
-                            point + Point(1, 1),
-                            point + Point(0, 1),
-                            (point + Point(1, 0)) - Point(0, 1),
-                            (point + Point(0, 1)) - Point(1, 0),
-                        ]
-                        .iter()
-                        .for_each(|point| {
-                            if self.is_in_board(*point) && !valid_gems.contains(point) {
-                                valid_gems.push(*point);
-                            }
-                        })
-                    }
-                }
-                _ => {}
-            }
-        }
-        valid_gems
-    }
-
-    /// Finds all gems that match and returns their positions in the board.
+    /// Finds all normal gems that match and returns their positions in the board.
     /// This can be used as a "dry run" to highlight any gems that have been matched.
     pub fn get_matching_gems(&self) -> Vec<Point<usize>> {
         let mut valid_gems: Vec<Point<usize>> = Vec::new();
@@ -372,6 +328,103 @@ impl Board {
             }
         }
         valid_gems
+    }
+
+    /// Finds all the gems that are to be removed because of a special gem matching.
+    pub fn get_matching_special_gems(&self) -> Vec<Point<usize>> {
+        let mut valid_gems: Vec<Point<usize>> = Vec::new();
+        let mut special_gems_found: Vec<Point<usize>> = Vec::new();
+        for i in 0..self.data.len() {
+            self.activate_special_gem(i, true).iter().for_each(|x| {
+                let index = self.point_to_index(*x);
+                match self.data[index] {
+                    Gem::Normal(_) => valid_gems.push(*x),
+                    _ => {
+                        valid_gems.push(*x);
+                        if index != i {
+                            special_gems_found.push(*x);
+                        }
+                    }
+                }
+            });
+        }
+        // Iteratively loop to make sure we activated all gems recursively
+        while special_gems_found.len() != 0 {
+            let mut special_gems_new: Vec<Point<usize>> = Vec::new();
+            special_gems_found.iter().for_each(|special_gem| {
+                let special_gem_index = self.point_to_index(*special_gem);
+                self.activate_special_gem(special_gem_index, false)
+                    .iter()
+                    .for_each(|x| {
+                        let index = self.point_to_index(*x);
+                        match self.data[index] {
+                            Gem::Normal(_) => {
+                                if !valid_gems.contains(x) {
+                                    valid_gems.push(*x);
+                                }
+                            }
+                            _ => {
+                                if index != special_gem_index && !valid_gems.contains(x) {
+                                    special_gems_new.push(*x);
+                                } else if !valid_gems.contains(x) {
+                                    valid_gems.push(*x);
+                                }
+                            }
+                        }
+                    });
+            });
+            special_gems_found = special_gems_new;
+        }
+        valid_gems
+    }
+
+    /// Given a special gem, returns all the gems it is to remove (including itself)
+    /// If the gem specified by the index is not a special gem, the returning vector will be empty.
+    /// index: The index of the special gem in self.data.
+    /// need_matching: Whether the gem needs to be matching with other gems to be activated - set this to false to force the gem to be activated.
+    pub fn activate_special_gem(&self, index: usize, need_matching: bool) -> Vec<Point<usize>> {
+        let point = self.index_to_point(index);
+        let mut to_remove: Vec<Point<usize>> = Vec::new();
+        match self.data[index] {
+            Gem::Hypercube(color) => {
+                if color.is_some() {
+                    for i in 0..self.data.len() {
+                        if Board::color_at_index(&self.data, i) == color {
+                            to_remove.push(self.index_to_point(i));
+                        }
+                    }
+                    to_remove.push(point);
+                }
+            }
+            Gem::Flame(color) => {
+                if !need_matching || self.is_matching_gem(self.data.as_ref(), point) {
+                    // Add the flame gem to the list of matching gems...
+                    to_remove.push(point);
+                    // And add all adjacent gems.
+                    [
+                        Point(point.0 as i32 - 1, point.1 as i32),
+                        Point(point.0 as i32 - 1, point.1 as i32 - 1),
+                        Point(point.0 as i32, point.1 as i32 - 1),
+                        Point(point.0 as i32 + 1, point.1 as i32),
+                        Point(point.0 as i32 + 1, point.1 as i32 + 1),
+                        Point(point.0 as i32, point.1 as i32 + 1),
+                        Point(point.0 as i32 + 1, point.1 as i32 - 1),
+                        Point(point.0 as i32 - 1, point.1 as i32 + 1),
+                    ]
+                    .iter()
+                    .for_each(|point| {
+                        if point.0 >= 0 && point.1 >= 0 {
+                            let point_usize = Point(point.0 as usize, point.1 as usize);
+                            if self.is_in_board(point_usize) && !to_remove.contains(&point_usize) {
+                                to_remove.push(point_usize);
+                            }
+                        }
+                    })
+                }
+            }
+            _ => {}
+        };
+        to_remove
     }
 
     /// Finds all matching gems, and then:
@@ -424,11 +477,11 @@ impl Board {
         // Iterate over the chains and add special gems.
         chains.iter().for_each(|chain| {
             if chain.len() == 4 {
-                self.data[self.point_to_index(chain[0])] =
+                self.data[self.point_to_index(chain[1])] =
                     Gem::Flame(self.color_at_point(&data_clone, chain[0]).unwrap());
             }
             if chain.len() == 5 {
-                self.data[self.point_to_index(chain[0])] = Gem::Hypercube(None);
+                self.data[self.point_to_index(chain[2])] = Gem::Hypercube(None);
             }
         });
     }

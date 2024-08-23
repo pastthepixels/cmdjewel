@@ -26,11 +26,14 @@ This game uses beyond_the_network.it:
 - and under a CC-BY-NC-ND 4.0 license.
 
 # TODO (0.2.0):
-- [ ] Special gems having chain reactions (e.g. a hypercube on a flame gem will explode it rather than remove it)
-- [ ] Spawn special gems where they were matched (rather than storing more metadata logic should be moved around)
+- [.] Special gems having chain reactions (e.g. a hypercube on a flame gem will explode it rather than remove it)
+- [.] Spawn special gems where they were matched (rather than storing more metadata logic should be moved around)
 - [.] When looking for gem combinations, make sure they were not created by special gems (e.g. star gems can't make matches of 6) (may have to store metadata?)
+- [ ] Hypercubes matched with each other just destroy each other.
+- [ ] The number of points it takes to advance levels constantly increases with each level.
 
 # TODO (0.3.0 - can't accept PR's until 0.2.0 is released):
+- [ ] Special gems that explode hypercubes activate those hypercubes
 - [ ] Hypercube with hypercube matching
 - [ ] Star gems
 - [ ] Supernova gems

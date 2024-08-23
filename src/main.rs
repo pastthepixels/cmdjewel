@@ -38,6 +38,7 @@ fn main() {
     ui::show_menu_main(&mut siv);
     // set up commands
     ui::init_commands(&mut siv);
+    siv.add_global_callback('`', cursive::Cursive::toggle_debug_console);
     // Set the refresh rate to 30 FPS and run
     siv.set_autorefresh(true);
     siv.run();
