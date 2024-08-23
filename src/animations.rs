@@ -1,4 +1,4 @@
-use crate::game::Gems;
+use crate::game::Gem;
 use crate::game::Point;
 use crate::view::BoardView;
 use cursive::event::Event;
@@ -19,13 +19,13 @@ const WARP_KEYFRAMES: usize = 50;
 /// Fullscreen animations.
 pub struct AnimationView<T: Animation + 'static> {
     animation: T,
-    data: Vec<Gems>,
+    data: Vec<Gem>,
     // WTF rust
     on_finish: Option<Arc<Box<dyn 'static + Fn(&mut cursive::Cursive) + Send + Sync>>>,
 }
 
 impl<T: Animation + 'static> AnimationView<T> {
-    pub fn new(animation: T, data: Vec<Gems>) -> Self {
+    pub fn new(animation: T, data: Vec<Gem>) -> Self {
         AnimationView {
             animation,
             data,
@@ -69,7 +69,7 @@ impl<T: Animation + 'static> cursive::view::View for AnimationView<T> {
                 (offsets[i].1 as i32 + board_offset.1 as i32) as usize,
             );
             // Prints it
-            if self.data[i] != Gems::Empty {
+            if self.data[i] != Gem::Empty {
                 printer.with_color(BoardView::gem_color(self.data[i]), |printer| {
                     printer.print(
                         (point.0, point.1),
@@ -105,7 +105,7 @@ pub trait Animation: Send + Sync {
     fn get_offsets(&self) -> Vec<Point<i32>>;
     fn get_max_keyframe(&self) -> usize;
     fn get_keyframe(&self) -> usize;
-    fn draw_background(&self, _: &Printer, _: &Vec<Gems>, _: usize, _: &Point<usize>);
+    fn draw_background(&self, _: &Printer, _: &Vec<Gem>, _: usize, _: &Point<usize>);
     /// Gets the position on screen for each gem, relative to the top left of the board
     fn calculate_positions(num_gems: usize) -> Vec<Point<f32>> {
         let mut positions: Vec<Point<f32>> = Vec::new();
@@ -172,7 +172,7 @@ impl Animation for Explosion {
     fn draw_background(
         &self,
         printer: &Printer,
-        _: &Vec<Gems>,
+        _: &Vec<Gem>,
         width: usize,
         board_offset: &Point<usize>,
     ) {
@@ -320,7 +320,7 @@ impl Animation for Warp {
         self.keyframe
     }
 
-    fn draw_background(&self, printer: &Printer, _: &Vec<Gems>, _: usize, _: &Point<usize>) {
+    fn draw_background(&self, printer: &Printer, _: &Vec<Gem>, _: usize, _: &Point<usize>) {
         self.circles.iter().for_each(|circle| {
             Warp::draw_circle(
                 printer,

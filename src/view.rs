@@ -175,41 +175,35 @@ impl BoardView {
 
     /// Gets a printable string from a game::Gems.
     /// This doesn't belong in game.rs as that file only contains game logic and nothing user-facing.
-    pub fn gem_string(gem: game::Gems) -> String {
+    pub fn gem_string(gem: game::Gem) -> String {
         match gem {
-            game::Gems::Empty => "•",
-            game::Gems::Blue => "▼",
-            game::Gems::White => "●",
-            game::Gems::Red => "■",
-            game::Gems::Yellow => "◆",
-            game::Gems::Green => "⬟",
-            game::Gems::Orange => "⬢",
-            game::Gems::Purple => "▲",
+            game::Gem::Empty => "•",
+            game::Gem::Blue => "▼",
+            game::Gem::White => "●",
+            game::Gem::Red => "■",
+            game::Gem::Yellow => "◆",
+            game::Gem::Green => "⬟",
+            game::Gem::Orange => "⬢",
+            game::Gem::Purple => "▲",
             // Special gems
-            game::Gems::Hypercube(_) => "💠",
+            game::Gem::Hypercube(_) => "💠",
         }
         .into()
     }
 
     /// Gets a ColorStyle given a game::Gems
-    pub fn gem_color(gem: game::Gems) -> ColorStyle {
+    pub fn gem_color(gem: game::Gem) -> ColorStyle {
         match gem {
-            game::Gems::Empty => ColorStyle::new(Color::Rgb(67, 76, 94), Color::Rgb(46, 52, 64)),
-            game::Gems::Blue => ColorStyle::new(Color::Rgb(126, 158, 189), Color::Rgb(46, 52, 64)),
-            game::Gems::White => ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64)),
-            game::Gems::Red => ColorStyle::new(Color::Rgb(190, 96, 105), Color::Rgb(46, 52, 64)),
-            game::Gems::Yellow => {
-                ColorStyle::new(Color::Rgb(233, 201, 138), Color::Rgb(46, 52, 64))
-            }
-            game::Gems::Green => ColorStyle::new(Color::Rgb(162, 188, 139), Color::Rgb(46, 52, 64)),
-            game::Gems::Orange => {
-                ColorStyle::new(Color::Rgb(207, 135, 111), Color::Rgb(46, 52, 64))
-            }
-            game::Gems::Purple => {
-                ColorStyle::new(Color::Rgb(174, 174, 255), Color::Rgb(46, 52, 64))
-            }
+            game::Gem::Empty => ColorStyle::new(Color::Rgb(67, 76, 94), Color::Rgb(46, 52, 64)),
+            game::Gem::Blue => ColorStyle::new(Color::Rgb(126, 158, 189), Color::Rgb(46, 52, 64)),
+            game::Gem::White => ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64)),
+            game::Gem::Red => ColorStyle::new(Color::Rgb(190, 96, 105), Color::Rgb(46, 52, 64)),
+            game::Gem::Yellow => ColorStyle::new(Color::Rgb(233, 201, 138), Color::Rgb(46, 52, 64)),
+            game::Gem::Green => ColorStyle::new(Color::Rgb(162, 188, 139), Color::Rgb(46, 52, 64)),
+            game::Gem::Orange => ColorStyle::new(Color::Rgb(207, 135, 111), Color::Rgb(46, 52, 64)),
+            game::Gem::Purple => ColorStyle::new(Color::Rgb(174, 174, 255), Color::Rgb(46, 52, 64)),
             // Special gems
-            game::Gems::Hypercube(_) => {
+            game::Gem::Hypercube(_) => {
                 ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64))
             }
         }

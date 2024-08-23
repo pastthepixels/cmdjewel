@@ -2,10 +2,7 @@
 // TODO: remove the below line once the implementation is complete.
 #![allow(dead_code, unused_variables)]
 
-use std::{
-    collections::HashMap,
-    ops::{Add, Sub},
-};
+use std::ops::{Add, Sub};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -21,7 +18,7 @@ const POINTS_LEVEL: u32 = 2000; // FIXME: remove two zeros
 
 /// Types of gems to use.
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub enum Gems {
+pub enum Gem {
     Empty,
     Blue,
     White,
@@ -35,16 +32,16 @@ pub enum Gems {
     Hypercube(Option<Direction>),
 }
 
-impl Distribution<Gems> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Gems {
+impl Distribution<Gem> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Gem {
         match rng.gen_range(0..=6) {
-            0 => Gems::Blue,
-            1 => Gems::White,
-            2 => Gems::Red,
-            3 => Gems::Yellow,
-            4 => Gems::Green,
-            5 => Gems::Orange,
-            _ => Gems::Purple,
+            0 => Gem::Blue,
+            1 => Gem::White,
+            2 => Gem::Red,
+            3 => Gem::Yellow,
+            4 => Gem::Green,
+            5 => Gem::Orange,
+            _ => Gem::Purple,
         }
     }
 }
@@ -122,8 +119,8 @@ impl BoardConfig {
 pub struct Board {
     // All boards in Bejeweled (and hence, cmdjewel) are 8x8.
     // Whatever this is resized to, it MUST be a valid power of two. (or else we get runtime errors ☹)
-    data: [Gems; 64],
-    buffer: [Gems; 64],
+    data: [Gem; 64],
+    buffer: [Gem; 64],
     // Location of the cursor as a tuple.
     cursor: Point<usize>,
     // Current score
@@ -135,18 +132,18 @@ pub struct Board {
 impl Board {
     pub fn new(config: BoardConfig) -> Self {
         Board {
-            data: [Gems::Empty; 64],
-            buffer: [Gems::Empty; 64],
+            data: [Gem::Empty; 64],
+            buffer: [Gem::Empty; 64],
             cursor: Point(0, 0),
             score: 0,
             config,
         }
     }
 
-    pub fn from_data(data: [Gems; 64]) -> Self {
+    pub fn from_data(data: [Gem; 64]) -> Self {
         Board {
             data,
-            buffer: [Gems::Empty; 64],
+            buffer: [Gem::Empty; 64],
             cursor: Point(0, 0),
             score: 0,
             config: BoardConfig::new_classic(),
@@ -179,30 +176,30 @@ impl Board {
         for i in (0..data_clone.len()).rev() {
             let point = self.index_to_point(i);
             while i + self.get_width() < data_clone.len()
-                && data_clone[i + self.get_width()] == Gems::Empty
-                && data_clone[i] != Gems::Empty
+                && data_clone[i + self.get_width()] == Gem::Empty
+                && data_clone[i] != Gem::Empty
             {
                 data_clone[i + self.get_width()] = data_clone[i];
-                data_clone[i] = Gems::Empty;
+                data_clone[i] = Gem::Empty;
             }
         }
         // 2. Insert new gems until everything is valid (brute force)
         let mut iterations = 0;
         loop {
             // Consider some case starting from data_clone
-            let case: [Gems; 64] = data_clone
+            let case: [Gem; 64] = data_clone
                 .into_iter()
                 .map(|gem| {
-                    if gem == Gems::Empty {
+                    if gem == Gem::Empty {
                         let gem = rand::random();
                         gem
                     } else {
                         gem
                     }
                 })
-                .collect::<Vec<Gems>>()
+                .collect::<Vec<Gem>>()
                 .try_into()
-                .unwrap_or([Gems::Empty; 64]);
+                .unwrap_or([Gem::Empty; 64]);
 
             // check if the case is valid
             if !self.config.infinite
@@ -227,9 +224,9 @@ impl Board {
         // Slides gems down by 1
         for i in (0..self.data.len()).rev() {
             if i + self.get_width() < self.data.len() {
-                if let Gems::Empty = self.data[i + self.get_width()] {
+                if let Gem::Empty = self.data[i + self.get_width()] {
                     self.data[i + self.get_width()] = self.data[i];
-                    self.data[i] = Gems::Empty;
+                    self.data[i] = Gem::Empty;
                 }
             }
         }
@@ -240,10 +237,10 @@ impl Board {
             // Then horizontally
             for j in 0..self.get_width() {
                 let index = self.point_to_index(Point(j, i));
-                if self.buffer[index] != Gems::Empty {
+                if self.buffer[index] != Gem::Empty {
                     non_empty_found = true;
                     self.data[j] = self.buffer[index];
-                    self.buffer[index] = Gems::Empty;
+                    self.buffer[index] = Gem::Empty;
                 }
             }
             if non_empty_found {
@@ -270,12 +267,12 @@ impl Board {
             Direction::Down => self.cursor + Point(0, 1),
         };
         // If the cursor is on a hypercube, store the direction of swappage.
-        if let Gems::Hypercube(_) = self.data[self.point_to_index(self.cursor)] {
-            self.data[self.point_to_index(self.cursor)] = Gems::Hypercube(Some(direction));
+        if let Gem::Hypercube(_) = self.data[self.point_to_index(self.cursor)] {
+            self.data[self.point_to_index(self.cursor)] = Gem::Hypercube(Some(direction));
         }
         // If we are swapping *with* a hypercube, store the direction of swappage.
-        if let Gems::Hypercube(_) = self.data[self.point_to_index(destination)] {
-            self.data[self.point_to_index(destination)] = Gems::Hypercube(Some(direction));
+        if let Gem::Hypercube(_) = self.data[self.point_to_index(destination)] {
+            self.data[self.point_to_index(destination)] = Gem::Hypercube(Some(direction));
         }
         // Otherwise swap the gems
         self.swap_explicit(self.cursor.clone(), destination)
@@ -309,7 +306,7 @@ impl Board {
         for i in 0..self.data.len() {
             let point = self.index_to_point(i);
             // check for hypercubes
-            if let Gems::Hypercube(dir) = self.data[i] {
+            if let Gem::Hypercube(dir) = self.data[i] {
                 if dir.is_some() {
                     let position: Point<usize> = match dir.unwrap() {
                         Direction::Left => point + Point(1, 0),
@@ -325,7 +322,7 @@ impl Board {
                     }
                     valid_gems.push(point);
                 }
-            } else if self.data[i] != Gems::Empty && self.is_matching_gem(self.data.as_ref(), point)
+            } else if self.data[i] != Gem::Empty && self.is_matching_gem(self.data.as_ref(), point)
             {
                 valid_gems.push(point);
             }
@@ -374,27 +371,27 @@ impl Board {
         });
         // Set every gem to empty
         matching_gems.iter().for_each(|point| {
-            self.data[self.point_to_index(*point)] = Gems::Empty;
+            self.data[self.point_to_index(*point)] = Gem::Empty;
             self.score += POINTS_SWAP as u32;
         });
         // Iterate over the chains and add special gems.
         chains.iter().for_each(|chain| {
             if chain.len() == 5 {
-                self.data[self.point_to_index(chain[0])] = Gems::Hypercube(None);
+                self.data[self.point_to_index(chain[0])] = Gem::Hypercube(None);
             }
         });
     }
 
     /// Returns true if the entire board is filled with gems.
     pub fn is_full(&self) -> bool {
-        self.data.iter().find(|x| Gems::Empty == **x) == None
+        self.data.iter().find(|x| Gem::Empty == **x) == None
     }
 
     /// Returns true if you can make a move on the board.
     pub fn is_valid(&self) -> bool {
         for i in 0..self.data.len() {
             let point = self.index_to_point(i);
-            if self.data[i] != Gems::Empty && self.is_valid_gem(point) {
+            if self.data[i] != Gem::Empty && self.is_valid_gem(point) {
                 return true;
             }
         }
@@ -405,7 +402,7 @@ impl Board {
     pub fn is_valid_gem(&self, point: Point<usize>) -> bool {
         // If we swapped the piece, would we swap it outside of the board? Check each direction to make sure you even *can* swap the piece.
         // also: Hypercubes can be matched with anything!
-        if let Gems::Hypercube(_) = self.data[self.point_to_index(point)] {
+        if let Gem::Hypercube(_) = self.data[self.point_to_index(point)] {
             true
         } else {
             self.is_valid_move(point, Direction::Left)
@@ -453,7 +450,7 @@ impl Board {
     ///    - Two pieces to its left/right
     ///    - Two pieces above it/below it
     ///    - One piece on either side horizontally/vertically
-    pub fn is_matching_gem(&self, data: &[Gems], point: Point<usize>) -> bool {
+    pub fn is_matching_gem(&self, data: &[Gem], point: Point<usize>) -> bool {
         let point_index = self.point_to_index(point);
         // Two pieces to the left
         if point.0 >= 2
@@ -495,7 +492,7 @@ impl Board {
         {
             true
         // Special gems!
-        } else if let Gems::Hypercube(_) = self.data[point_index] {
+        } else if let Gem::Hypercube(_) = self.data[point_index] {
             true
         } else {
             false
@@ -526,7 +523,7 @@ impl Board {
     }
 
     /// Returns a reference to self.data
-    pub fn as_ref(&self) -> &[Gems] {
+    pub fn as_ref(&self) -> &[Gem] {
         self.data.as_ref()
     }
 
