@@ -112,7 +112,9 @@ impl BoardView {
     fn create_animations(&mut self) {
         // Highlight all matching gems
         if self.board.is_full() {
-            self.board.get_matching_gems().iter().for_each(|x| {
+            let mut gems = self.board.get_matching_gems();
+            gems.append(&mut self.board.get_matching_special_gems());
+            gems.iter().for_each(|x| {
                 self.animations.push(Animation {
                     point: *x,
                     duration: 8,

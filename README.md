@@ -24,3 +24,13 @@ This game uses beyond_the_network.it:
 - by Skaven252,
 - retrieved from [The Mod Archive](https://modarchive.org/index.php?request=view_by_moduleid&query=156184),
 - and under a CC-BY-NC-ND 4.0 license.
+
+# TODO (0.2.0):
+- [ ] Special gems having chain reactions (e.g. a hypercube on a flame gem will explode it rather than remove it)
+- [ ] Spawn special gems where they were matched (rather than storing more metadata logic should be moved around)
+- [.] When looking for gem combinations, make sure they were not created by special gems (e.g. star gems can't make matches of 6) (may have to store metadata?)
+
+# TODO (0.3.0 - can't accept PR's until 0.2.0 is released):
+- [ ] Hypercube with hypercube matching
+- [ ] Star gems
+- [ ] Supernova gems

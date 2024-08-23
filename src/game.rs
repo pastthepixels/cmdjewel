@@ -313,9 +313,9 @@ impl Board {
         point.1 < self.get_width() && point.0 < self.get_width()
     }
 
-    /// Finds all gems that match and returns their positions in the board.
-    /// This can be used as a "dry run" to highlight any gems that have been matched.
-    pub fn get_matching_gems(&self) -> Vec<Point<usize>> {
+    /// Finda all the gems that are to be removed because of a special gem matching.
+    /// Runs iteratively in case a special gem matches with another special gem.
+    pub fn get_matching_special_gems(&self) -> Vec<Point<usize>> {
         let mut valid_gems: Vec<Point<usize>> = Vec::new();
         for i in 0..self.data.len() {
             let point = self.index_to_point(i);
@@ -327,13 +327,6 @@ impl Board {
                                 valid_gems.push(self.index_to_point(j));
                             }
                         }
-                        valid_gems.push(point);
-                    }
-                }
-                Gem::Normal(color) => {
-                    if self.is_matching_gem(self.data.as_ref(), point)
-                        && !valid_gems.contains(&point)
-                    {
                         valid_gems.push(point);
                     }
                 }
@@ -366,12 +359,27 @@ impl Board {
         valid_gems
     }
 
+    /// Finds all gems that match and returns their positions in the board.
+    /// This can be used as a "dry run" to highlight any gems that have been matched.
+    pub fn get_matching_gems(&self) -> Vec<Point<usize>> {
+        let mut valid_gems: Vec<Point<usize>> = Vec::new();
+        for i in 0..self.data.len() {
+            let point = self.index_to_point(i);
+            if let Gem::Normal(_) = self.data[i] {
+                if self.is_matching_gem(self.data.as_ref(), point) && !valid_gems.contains(&point) {
+                    valid_gems.push(point);
+                }
+            }
+        }
+        valid_gems
+    }
+
     /// Finds all matching gems, and then:
     /// - Removes them, replacing them with empty spaces.
     /// - Adds points for each matching gem.
     /// - Adds special gems if applicable.
     pub fn update_matching_gems(&mut self) {
-        let matching_gems = self.get_matching_gems();
+        let mut matching_gems = self.get_matching_gems();
         // Check for special gems
         // One-directional chains (flame gems, hypercubes, supernova gems)
         let mut chains: Vec<Vec<Point<usize>>> = Vec::new();
@@ -405,9 +413,10 @@ impl Board {
                 chains.push(vec![*point]);
             }
         });
-        // Set every gem to empty
         // TODO: memcpy should be finnnee but make it faster
         let data_clone = self.data.clone();
+        // Set every matching gem and (matching) special gem to empty
+        matching_gems.append(&mut self.get_matching_special_gems());
         matching_gems.iter().for_each(|point| {
             self.data[self.point_to_index(*point)] = Gem::Empty;
             self.score += POINTS_SWAP as u32;
