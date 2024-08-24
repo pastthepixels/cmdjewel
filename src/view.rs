@@ -112,15 +112,21 @@ impl BoardView {
     fn create_animations(&mut self) {
         // Highlight all matching gems
         if self.board.is_full() {
-            let mut gems = self.board.get_matching_gems();
-            gems.append(&mut self.board.get_matching_special_gems());
-            gems.iter().for_each(|x| {
-                self.animations.push(Animation {
-                    point: *x,
-                    duration: 8,
-                    animation_type: AnimationType::Highlight,
+            let mut points: Vec<game::Point<usize>> = Vec::new();
+            self.board
+                .get_matching_gems()
+                .into_iter()
+                .chain(self.board.get_matching_special_gems().into_iter())
+                .for_each(|x| {
+                    if !points.contains(&x) {
+                        self.animations.push(Animation {
+                            point: x,
+                            duration: 8,
+                            animation_type: AnimationType::Highlight,
+                        });
+                        points.push(x);
+                    }
                 });
-            });
         }
         // Explode if not valid
         if !self.board.is_valid() && self.board.is_full() {
