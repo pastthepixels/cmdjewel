@@ -28,8 +28,8 @@ pub enum Gem {
     Star(GemColor),
     // Suprnova gems.
     Supernova(GemColor),
-    // Hypercube (with direction it was swapped *to*)
-    Hypercube(Option<GemColor>),
+    // Hypercube
+    Hypercube(GemSelector),
 }
 
 /// Gem colors. These are not associated with any special abilities nor do they include special gems (e.g. hypercubes)
@@ -42,6 +42,15 @@ pub enum GemColor {
     Green,
     Orange,
     Purple,
+}
+
+/// Enum for different (general) ways of selecting gems on a board.
+/// I mean I could also like add something with a vec of points if I want I guess
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum GemSelector {
+    Color(GemColor),
+    All,
+    None,
 }
 
 impl Distribution<Gem> for Standard {
@@ -280,13 +289,20 @@ impl Board {
         };
         // If the cursor is on a hypercube, store the direction of swappage.
         if let Gem::Hypercube(_) = self.data[self.point_to_index(self.cursor)] {
-            self.data[self.point_to_index(self.cursor)] =
-                Gem::Hypercube(self.color_at_point(&self.data, destination));
+            // Hypercubes matching with hypercubes destroy whole boards.
+            if let Gem::Hypercube(_) = self.data[self.point_to_index(destination)] {
+                self.data[self.point_to_index(self.cursor)] = Gem::Hypercube(GemSelector::All);
+            } else {
+                self.data[self.point_to_index(self.cursor)] = Gem::Hypercube(GemSelector::Color(
+                    self.color_at_point(&self.data, destination).unwrap(),
+                ));
+            }
         }
         // If we are swapping *with* a hypercube, store the direction of swappage.
         else if let Gem::Hypercube(_) = self.data[self.point_to_index(destination)] {
-            self.data[self.point_to_index(destination)] =
-                Gem::Hypercube(self.color_at_point(&self.data, self.cursor));
+            self.data[self.point_to_index(destination)] = Gem::Hypercube(GemSelector::Color(
+                self.color_at_point(&self.data, self.cursor).unwrap(),
+            ));
         }
         // Otherwise swap the gems
         else {
@@ -386,16 +402,24 @@ impl Board {
         let point = self.index_to_point(index);
         let mut to_remove: Vec<Point<usize>> = Vec::new();
         match self.data[index] {
-            Gem::Hypercube(color) => {
-                if color.is_some() {
+            Gem::Hypercube(gem_selector) => match gem_selector {
+                GemSelector::Color(color) => {
                     for i in 0..self.data.len() {
-                        if Board::color_at_index(&self.data, i) == color {
+                        let piece_color = Board::color_at_index(&self.data, i);
+                        if piece_color.is_some() && piece_color.unwrap() == color {
                             to_remove.push(self.index_to_point(i));
                         }
                     }
                     to_remove.push(point);
                 }
-            }
+                GemSelector::All => {
+                    for i in 0..self.data.len() {
+                        to_remove.push(self.index_to_point(i));
+                    }
+                    to_remove.push(point);
+                }
+                GemSelector::None => {}
+            },
             Gem::Flame(color) => {
                 if !need_matching || self.is_matching_gem(self.data.as_ref(), point) {
                     // Add the flame gem to the list of matching gems...
@@ -481,7 +505,7 @@ impl Board {
                     Gem::Flame(self.color_at_point(&data_clone, chain[0]).unwrap());
             }
             if chain.len() == 5 {
-                self.data[self.point_to_index(chain[2])] = Gem::Hypercube(None);
+                self.data[self.point_to_index(chain[2])] = Gem::Hypercube(GemSelector::None);
             }
         });
     }
