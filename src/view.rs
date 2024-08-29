@@ -196,9 +196,17 @@ impl BoardView {
                 game::GemColor::Orange => "⬢",
                 game::GemColor::Purple => "▲",
             },
-            game::Gem::Flame(_) => "F",
-            game::Gem::Star(_) => "s",
-            game::Gem::Supernova(_) => "S",
+            game::Gem::Flame(x) => match x {
+                game::GemColor::Blue => "▽",
+                game::GemColor::White => "○",
+                game::GemColor::Red => "□",
+                game::GemColor::Yellow => "◇",
+                game::GemColor::Green => "⬠",
+                game::GemColor::Orange => "⬡",
+                game::GemColor::Purple => "△",
+            },
+            game::Gem::Star(_) => "★",
+            game::Gem::Supernova(_) => "☆", // TODO: this is a different character why does it look filled in
             game::Gem::Hypercube(_) => "💠",
         }
         .into()
