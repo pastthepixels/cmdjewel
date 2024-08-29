@@ -141,6 +141,7 @@ impl BoardView {
         }
         self.board.fill_gem_buffer();
         self.board.slide_down();
+        self.board.update_level();
         //self.board.update_physics_frame();
         if self.autoplay && self.board.is_full() {
             self.hint();

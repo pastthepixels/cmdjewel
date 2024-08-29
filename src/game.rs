@@ -13,8 +13,10 @@ use rand::{
 // Specifies how much points you get for each gem successfully swapped.
 const POINTS_SWAP: u8 = 30;
 
-// Specifies how much points you have to acquire before you level up.
-const POINTS_LEVEL: u32 = 2000; // FIXME: remove two zeros
+// Specifies how much a swap counts toward progressing through each level, for each gem successfully swapped.
+const PROGRESS_SWAP_INITIAL: f32 = 0.05;
+const PROGRESS_SWAP_FALLOFF: f32 = 0.9; // PROGRESS_SWAP_INITIAL gets multiplied by this for each level
+const PROGRESS_SWAP_MIN: f32 = 0.001;
 
 /// Types of gems to use.
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -144,8 +146,10 @@ pub struct Board {
     buffer: [Gem; 64],
     // Location of the cursor as a tuple.
     cursor: Point<usize>,
-    // Current score
+    // Current score/level
     score: u32,
+    level: u8,
+    level_progress: f32,
     // Config
     config: BoardConfig,
 }
@@ -157,6 +161,8 @@ impl Board {
             buffer: [Gem::Empty; 64],
             cursor: Point(0, 0),
             score: 0,
+            level: 0,
+            level_progress: 0.0,
             config,
         }
     }
@@ -167,19 +173,36 @@ impl Board {
             buffer: [Gem::Empty; 64],
             cursor: Point(0, 0),
             score: 0,
+            level: 0,
+            level_progress: 0.0,
             config: BoardConfig::new_classic(),
         }
     }
 
     /// Returns the current level as an integer.
     pub fn get_level(&self) -> u8 {
-        (self.score / POINTS_LEVEL) as u8
+        self.level
     }
 
     /// Returns the progress of the current level as a floating point.
     /// $0 <= p <= 1$ for any progress $p$.
     pub fn get_level_progress(&self) -> f32 {
-        (self.score % POINTS_LEVEL) as f32 / POINTS_LEVEL as f32
+        self.level_progress.min(1.0)
+    }
+
+    /// Every time a gem is swapped, points are added, and the gem contributes some amount to progessing though a level.
+    /// This function returns that amount based on the current level.
+    pub fn get_swap_progress(&self) -> f32 {
+        (PROGRESS_SWAP_INITIAL * PROGRESS_SWAP_FALLOFF.powi(self.level as i32))
+            .max(PROGRESS_SWAP_MIN)
+    }
+
+    /// Increments the level by 1 and resets level_progress if level_progress is geq 1
+    pub fn update_level(&mut self) {
+        if self.level_progress >= 1.0 {
+            self.level_progress -= 1.0;
+            self.level += 1;
+        }
     }
 
     /// Gets the score
@@ -497,6 +520,7 @@ impl Board {
         matching_gems.iter().for_each(|point| {
             self.data[self.point_to_index(*point)] = Gem::Empty;
             self.score += POINTS_SWAP as u32;
+            self.level_progress += self.get_swap_progress();
         });
         // Iterate over the chains and add special gems.
         chains.iter().for_each(|chain| {

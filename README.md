@@ -31,7 +31,7 @@ This game uses beyond_the_network.it:
 - [x] When looking for gem combinations, make sure they were not created by special gems (e.g. star gems can't make matches of 6) (may have to store metadata?)
 - [x] Hypercubes matched with each other just destroy each other. (new struct for a selection of gems)
     - nope they now destroy the whole board because it's easier
-- [ ] The number of points it takes to advance levels constantly increases with each level.
+- [x] The number of points it takes to advance levels constantly increases with each level.
 
 # TODO (0.3.0 - can't accept PR's until 0.2.0 is released):
 - [ ] Special gems that explode hypercubes activate those hypercubes
