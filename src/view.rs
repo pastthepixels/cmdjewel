@@ -139,7 +139,9 @@ impl BoardView {
         if self.board.is_full() {
             self.board.update_matching_gems();
         }
-        self.board.fill_gem_buffer();
+        if self.board.is_buffer_empty() {
+            self.board.fill_gem_buffer();
+        }
         self.board.slide_down();
         self.board.update_level();
         //self.board.update_physics_frame();
@@ -221,7 +223,7 @@ impl BoardView {
             game::Gem::Star(x) => BoardView::colorstyle_from_gemcolor(x),
             game::Gem::Supernova(x) => BoardView::colorstyle_from_gemcolor(x),
             game::Gem::Hypercube(_) => {
-                ColorStyle::new(Color::Rgb(126, 158, 189), Color::Rgb(67, 76, 94))
+                ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(67, 76, 94))
             }
         }
     }
@@ -341,7 +343,7 @@ impl cursive::view::View for BoardView {
                     .is_none();
                 // Sets is_valid to true and shuffles if the board is not valid
                 if is_valid == false && self.board.config_ref().infinite {
-                    self.board.shuffle();
+                    //self.board.shuffle();
                     is_valid = true;
                 }
                 // Hacks initial_level if there is a warp animation

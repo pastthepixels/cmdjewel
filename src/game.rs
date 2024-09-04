@@ -210,6 +210,11 @@ impl Board {
         self.score
     }
 
+    /// Returns true if the buffer is empty (and can be filled).
+    pub fn is_buffer_empty(&self) -> bool {
+        self.buffer.iter().all(|x| *x == Gem::Empty)
+    }
+
     /// Fills the buffer:
     ///        a. Clone data and make everything fall down.
     ///        b. Insert new gems until everything is valid (brute force)
@@ -235,8 +240,12 @@ impl Board {
                 .into_iter()
                 .map(|gem| {
                     if gem == Gem::Empty {
-                        let gem = rand::random();
-                        gem
+                        if iterations > 500 {
+                            // Just generate a hypercube man I don't even care anymore man
+                            Gem::Hypercube(GemSelector::None)
+                        } else {
+                            rand::random()
+                        }
                     } else {
                         gem
                     }
@@ -246,9 +255,7 @@ impl Board {
                 .unwrap_or([Gem::Empty; 64]);
 
             // check if the case is valid
-            if !self.config.infinite
-                || (self.config.infinite && Board::from_data(case).is_valid())
-                || iterations > (7 as i32).pow(8)
+            if !self.config.infinite || (self.config.infinite && Board::from_data(case).is_valid())
             {
                 // Record the gems we inserted and their positions in the gem buffer.
                 for i in 0..case.len() {
@@ -263,7 +270,7 @@ impl Board {
         }
     }
 
-    /// Slides gems down by 1, and fill the topmost empty row with the lowest row from the buffer.
+    /// Slides gems down by 1, and fill the topmost row with the lowest row from the buffer.
     pub fn slide_down(&mut self) {
         // Slides gems down by 1
         for i in (0..self.data.len()).rev() {
@@ -274,7 +281,22 @@ impl Board {
                 }
             }
         }
-        // Fills topmost row
+
+        // Searches backward through the buffer until it finds the first non-empty space,
+        // and then adds that (and continues adding non-empty spaces) until the beginning
+        // of that row.
+        let mut non_empty_found = false;
+        for i in (0..self.buffer.len()).rev() {
+            if self.buffer[i] != Gem::Empty {
+                non_empty_found = true;
+                self.data[self.index_to_point(i).0] = self.buffer[i];
+                self.buffer[i] = Gem::Empty;
+            }
+            if non_empty_found && i % self.get_width() == 0 {
+                break;
+            }
+        }
+        /*
         // Loops vertically
         for i in (0..self.get_width()).rev() {
             let mut non_empty_found = false;
@@ -290,7 +312,7 @@ impl Board {
             if non_empty_found {
                 break;
             }
-        }
+        }*/
     }
 
     /// Shuffles the board (until we have a valid board).
