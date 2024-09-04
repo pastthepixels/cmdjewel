@@ -34,6 +34,8 @@ fn main() {
             }
         }),
     });
+    // Sets the terminal background (hack that works on some terminals that I got from pywal16)
+    println!("\x1b]11;#2E3440\x07");
     // show the main menu
     ui::show_menu_main(&mut siv);
     // set up commands

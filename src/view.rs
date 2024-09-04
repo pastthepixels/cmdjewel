@@ -206,8 +206,8 @@ impl BoardView {
                 game::GemColor::Purple => "△",
             },
             game::Gem::Star(_) => "★",
-            game::Gem::Supernova(_) => "☆", // TODO: this is a different character why does it look filled in
-            game::Gem::Hypercube(_) => "💠",
+            game::Gem::Supernova(_) => "☆",
+            game::Gem::Hypercube(_) => "◩",
         }
         .into()
     }
@@ -221,7 +221,7 @@ impl BoardView {
             game::Gem::Star(x) => BoardView::colorstyle_from_gemcolor(x),
             game::Gem::Supernova(x) => BoardView::colorstyle_from_gemcolor(x),
             game::Gem::Hypercube(_) => {
-                ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64))
+                ColorStyle::new(Color::Rgb(126, 158, 189), Color::Rgb(67, 76, 94))
             }
         }
     }
