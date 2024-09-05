@@ -105,6 +105,46 @@ where
         let difference = to - from;
         f32::sqrt(difference.0.powi(2) + difference.1.powi(2))
     }
+    // Gets a list of all adjacent points for a usize point
+    pub fn get_adjacent_usize(point: Point<usize>) -> Vec<Point<usize>> {
+        let mut points_valid: Vec<Point<usize>> = Vec::new();
+        let point = Point(point.0 as i32, point.1 as i32);
+        [
+            Point(point.0, point.1 + 1),
+            Point(point.0, point.1 - 1),
+            Point(point.0 + 1, point.1),
+            Point(point.0 + 1, point.1 + 1),
+            Point(point.0 + 1, point.1 - 1),
+            Point(point.0 - 1, point.1),
+            Point(point.0 - 1, point.1 + 1),
+            Point(point.0 - 1, point.1 - 1),
+        ]
+        .iter()
+        .for_each(|adjacent| {
+            if adjacent.0 >= 0 && adjacent.1 >= 0 {
+                points_valid.push(Point(adjacent.0 as usize, adjacent.1 as usize));
+            }
+        });
+        points_valid
+    }
+    // Gets a list of all points that touch a point to one edge for a usize point
+    pub fn get_edge_usize(point: Point<usize>) -> Vec<Point<usize>> {
+        let mut points_valid: Vec<Point<usize>> = Vec::new();
+        let point = Point(point.0 as i32, point.1 as i32);
+        [
+            Point(point.0, point.1 + 1),
+            Point(point.0, point.1 - 1),
+            Point(point.0 + 1, point.1),
+            Point(point.0 - 1, point.1),
+        ]
+        .iter()
+        .for_each(|adjacent| {
+            if adjacent.0 >= 0 && adjacent.1 >= 0 {
+                points_valid.push(Point(adjacent.0 as usize, adjacent.1 as usize));
+            }
+        });
+        points_valid
+    }
 }
 
 /// Specifies adjacent directions
@@ -157,7 +197,72 @@ pub struct Board {
 impl Board {
     pub fn new(config: BoardConfig) -> Self {
         Board {
-            data: [Gem::Empty; 64],
+            data: [
+                Gem::Normal(GemColor::Orange),
+                Gem::Empty, //Gem::Normal(GemColor::Orange),
+                Gem::Normal(GemColor::Green),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::Purple),
+                Gem::Normal(GemColor::Red),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::Green),
+                Gem::Normal(GemColor::Red),
+                Gem::Normal(GemColor::Purple),
+                Gem::Normal(GemColor::Blue),
+                Gem::Normal(GemColor::Blue),
+                Gem::Normal(GemColor::Orange),
+                Gem::Normal(GemColor::Green),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::Orange),
+                Gem::Normal(GemColor::Red),
+                Gem::Normal(GemColor::Green),
+                Gem::Normal(GemColor::White),
+                Gem::Normal(GemColor::White),
+                Gem::Normal(GemColor::Purple),
+                Gem::Normal(GemColor::Red),
+                Gem::Normal(GemColor::White),
+                Gem::Normal(GemColor::White),
+                Gem::Normal(GemColor::Purple),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::Orange),
+                Gem::Normal(GemColor::Blue),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::Purple),
+                Gem::Normal(GemColor::Purple),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::Blue),
+                Gem::Normal(GemColor::Purple),
+                Gem::Normal(GemColor::White),
+                Gem::Normal(GemColor::Green),
+                Gem::Normal(GemColor::Orange),
+                Gem::Normal(GemColor::Orange),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::Purple),
+                Gem::Normal(GemColor::Green),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::Green),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::White),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::Purple),
+                Gem::Normal(GemColor::Orange),
+                Gem::Normal(GemColor::Purple),
+                Gem::Normal(GemColor::Red),
+                Gem::Normal(GemColor::Orange),
+                Gem::Normal(GemColor::White),
+                Gem::Normal(GemColor::Purple),
+                Gem::Normal(GemColor::Green),
+                Gem::Normal(GemColor::Green),
+                Gem::Normal(GemColor::Green),
+                Gem::Normal(GemColor::Red),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::White),
+                Gem::Normal(GemColor::Yellow),
+                Gem::Normal(GemColor::Purple),
+                Gem::Normal(GemColor::Green),
+                Gem::Normal(GemColor::White),
+            ],
             buffer: [Gem::Empty; 64],
             cursor: Point(0, 0),
             score: 0,
@@ -212,7 +317,7 @@ impl Board {
 
     /// Returns true if the buffer is empty (and can be filled).
     pub fn is_buffer_empty(&self) -> bool {
-        self.buffer.iter().all(|x| *x == Gem::Empty)
+        self.buffer.iter().all(|&x| x == Gem::Empty)
     }
 
     /// Fills the buffer:
@@ -222,30 +327,23 @@ impl Board {
     pub fn fill_gem_buffer(&mut self) {
         // 1. Clone data and make everything fall down.
         let mut data_clone = self.data.clone();
-        for i in (0..data_clone.len()).rev() {
-            let point = self.index_to_point(i);
-            while i + self.get_width() < data_clone.len()
-                && data_clone[i + self.get_width()] == Gem::Empty
-                && data_clone[i] != Gem::Empty
-            {
+        for i in 0..(data_clone.len() - self.get_width()) {
+            if data_clone[i + self.get_width()] == Gem::Empty {
                 data_clone[i + self.get_width()] = data_clone[i];
                 data_clone[i] = Gem::Empty;
             }
         }
+        // 2. If it's supposed to be infinite, but it isn't valid, do some checks...
         // 2. Insert new gems until everything is valid (brute force)
         let mut iterations = 0;
         loop {
             // Consider some case starting from data_clone
             let case: [Gem; 64] = data_clone
+                .clone()
                 .into_iter()
                 .map(|gem| {
                     if gem == Gem::Empty {
-                        if iterations > 500 {
-                            // Just generate a hypercube man I don't even care anymore man
-                            Gem::Hypercube(GemSelector::None)
-                        } else {
-                            rand::random()
-                        }
+                        rand::random()
                     } else {
                         gem
                     }
@@ -255,7 +353,21 @@ impl Board {
                 .unwrap_or([Gem::Empty; 64]);
 
             // check if the case is valid
-            if !self.config.infinite || (self.config.infinite && Board::from_data(case).is_valid())
+            if iterations > 500 {
+                for i in 0..case.len() {
+                    if case[i] != data_clone[i] {
+                        self.buffer[i] = case[i];
+                    }
+                }
+                // Find the first empty spot in data_clone, make that a hypercube
+                for i in 0..data_clone.len() {
+                    if data_clone[i] == Gem::Empty {
+                        self.buffer[i] = Gem::Hypercube(GemSelector::None);
+                    }
+                }
+                break;
+            } else if !self.config.infinite
+                || (self.config.infinite && Board::from_data(case).is_valid())
             {
                 // Record the gems we inserted and their positions in the gem buffer.
                 for i in 0..case.len() {
@@ -272,13 +384,27 @@ impl Board {
 
     /// Slides gems down by 1, and fill the topmost row with the lowest row from the buffer.
     pub fn slide_down(&mut self) {
-        // Slides gems down by 1
-        for i in (0..self.data.len()).rev() {
-            if i + self.get_width() < self.data.len() {
-                if let Gem::Empty = self.data[i + self.get_width()] {
-                    self.data[i + self.get_width()] = self.data[i];
-                    self.data[i] = Gem::Empty;
+        /*
+                // TODO: remove
+                for i in 0..(self.data.len() - self.get_width()) {
+                    if self.data[i + self.get_width()] == Gem::Empty {
+                        self.data[i + self.get_width()] = self.data[i];
+                        self.data[i] = Gem::Empty;
+                    }
                 }
+                for i in 0..(self.buffer.len()) {
+                    if self.buffer[i] != Gem::Empty {
+                        self.data[i] = self.buffer[i];
+                        self.buffer[i] = Gem::Empty;
+                    }
+                }
+                return;
+        */
+        // Slides gems down by 1
+        for i in (0..(self.data.len() - self.get_width())).rev() {
+            if let Gem::Empty = self.data[i + self.get_width()] {
+                self.data[i + self.get_width()] = self.data[i];
+                self.data[i] = Gem::Empty;
             }
         }
 
@@ -287,32 +413,16 @@ impl Board {
         // of that row.
         let mut non_empty_found = false;
         for i in (0..self.buffer.len()).rev() {
-            if self.buffer[i] != Gem::Empty {
+            let x = self.index_to_point(i).0;
+            if self.buffer[i] != Gem::Empty && self.data[x] == Gem::Empty {
                 non_empty_found = true;
-                self.data[self.index_to_point(i).0] = self.buffer[i];
+                self.data[x] = self.buffer[i];
                 self.buffer[i] = Gem::Empty;
             }
             if non_empty_found && i % self.get_width() == 0 {
                 break;
             }
         }
-        /*
-        // Loops vertically
-        for i in (0..self.get_width()).rev() {
-            let mut non_empty_found = false;
-            // Then horizontally
-            for j in 0..self.get_width() {
-                let index = self.point_to_index(Point(j, i));
-                if self.buffer[index] != Gem::Empty {
-                    non_empty_found = true;
-                    self.data[j] = self.buffer[index];
-                    self.buffer[index] = Gem::Empty;
-                }
-            }
-            if non_empty_found {
-                break;
-            }
-        }*/
     }
 
     /// Shuffles the board (until we have a valid board).

@@ -45,6 +45,7 @@ pub struct BoardView {
     animations: Vec<Animation>,
     pub cursor_mode: CursorMode,
     pub autoplay: bool,
+    pub animations_enabled: bool,
 }
 
 impl BoardView {
@@ -55,7 +56,13 @@ impl BoardView {
             animations: Vec::new(),
             cursor_mode: CursorMode::Normal,
             autoplay: false,
+            animations_enabled: true,
         }
+    }
+
+    /// Gets a string of interesting debug info
+    pub fn get_debug(&self) -> String {
+        format!("is_buffer_empty: {}", self.board.is_buffer_empty())
     }
 
     /// Sets the cursor to the first swappable gem
@@ -136,15 +143,15 @@ impl BoardView {
 
     /// Updates board logic.
     fn update_board(&mut self) {
-        if self.board.is_full() {
-            self.board.update_matching_gems();
-        }
         if self.board.is_buffer_empty() {
-            self.board.fill_gem_buffer();
+            if self.board.is_full() {
+                self.board.update_matching_gems();
+            } else {
+                self.board.fill_gem_buffer();
+            }
         }
         self.board.slide_down();
         self.board.update_level();
-        //self.board.update_physics_frame();
         if self.autoplay && self.board.is_full() {
             self.hint();
             self.attempt_swap(game::Direction::Left);
@@ -324,7 +331,7 @@ impl cursive::view::View for BoardView {
                     }
                 }
                 if !exists_running_animation {
-                    if !is_animation_removed {
+                    if !is_animation_removed && self.animations_enabled {
                         self.create_animations();
                     }
                     // Update board
@@ -354,6 +361,10 @@ impl cursive::view::View for BoardView {
                     .is_some()
                 {
                     initial_level = level + 1; // Now initial_level != level
+                }
+                // Hacks initial_level if we don't want to use animations
+                if self.animations_enabled == false {
+                    initial_level = level;
                 }
                 EventResult::with_cb(move |s| {
                     s.call_on_name("score", |score_view: &mut TextView| {
