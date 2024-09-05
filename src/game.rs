@@ -327,10 +327,17 @@ impl Board {
     pub fn fill_gem_buffer(&mut self) {
         // 1. Clone data and make everything fall down.
         let mut data_clone = self.data.clone();
-        for i in 0..(data_clone.len() - self.get_width()) {
-            if data_clone[i + self.get_width()] == Gem::Empty {
-                data_clone[i + self.get_width()] = data_clone[i];
-                data_clone[i] = Gem::Empty;
+        loop {
+            let mut gem_fell = false;
+            for i in 0..(data_clone.len() - self.get_width()) {
+                if data_clone[i + self.get_width()] == Gem::Empty && data_clone[i] != Gem::Empty {
+                    data_clone[i + self.get_width()] = data_clone[i];
+                    data_clone[i] = Gem::Empty;
+                    gem_fell = true;
+                }
+            }
+            if !gem_fell {
+                break;
             }
         }
         // 2. If it's supposed to be infinite, but it isn't valid, do some checks...
@@ -384,22 +391,6 @@ impl Board {
 
     /// Slides gems down by 1, and fill the topmost row with the lowest row from the buffer.
     pub fn slide_down(&mut self) {
-        /*
-                // TODO: remove
-                for i in 0..(self.data.len() - self.get_width()) {
-                    if self.data[i + self.get_width()] == Gem::Empty {
-                        self.data[i + self.get_width()] = self.data[i];
-                        self.data[i] = Gem::Empty;
-                    }
-                }
-                for i in 0..(self.buffer.len()) {
-                    if self.buffer[i] != Gem::Empty {
-                        self.data[i] = self.buffer[i];
-                        self.buffer[i] = Gem::Empty;
-                    }
-                }
-                return;
-        */
         // Slides gems down by 1
         for i in (0..(self.data.len() - self.get_width())).rev() {
             if let Gem::Empty = self.data[i + self.get_width()] {

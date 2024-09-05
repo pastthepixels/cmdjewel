@@ -43,6 +43,5 @@ fn main() {
     siv.add_global_callback('`', cursive::Cursive::toggle_debug_console);
     // Set the refresh rate to 30 FPS and run
     siv.set_autorefresh(true);
-    //siv.set_fps(60);
     siv.run();
 }
