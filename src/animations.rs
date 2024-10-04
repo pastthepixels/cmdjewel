@@ -63,18 +63,15 @@ impl<T: Animation + 'static> cursive::view::View for AnimationView<T> {
         // Gets all offsets
         let offsets = self.animation.get_offsets();
         // Loops through/prints NON-EMPTY gems
-        for i in 0..self.data.len() {
+        for (i, gem) in offsets.iter().enumerate().take(self.data.len()) {
             let point = Point(
-                (offsets[i].0 as i32 + board_offset.0 as i32) as usize,
-                (offsets[i].1 as i32 + board_offset.1 as i32) as usize,
+                (gem.0 + board_offset.0 as i32) as usize,
+                (gem.1 + board_offset.1 as i32) as usize,
             );
             // Prints it
             if self.data[i] != Gem::Empty {
                 printer.with_color(BoardView::gem_color(self.data[i]), |printer| {
-                    printer.print(
-                        (point.0, point.1),
-                        &format!("{}", BoardView::gem_string(self.data[i])),
-                    )
+                    printer.print((point.0, point.1), &BoardView::gem_string(self.data[i]))
                 });
             }
         }
@@ -105,7 +102,7 @@ pub trait Animation: Send + Sync {
     fn get_offsets(&self) -> Vec<Point<i32>>;
     fn get_max_keyframe(&self) -> usize;
     fn get_keyframe(&self) -> usize;
-    fn draw_background(&self, _: &Printer, _: &Vec<Gem>, _: usize, _: &Point<usize>);
+    fn draw_background(&self, _: &Printer, _: &[Gem], _: usize, _: &Point<usize>);
     /// Gets the position on screen for each gem, relative to the top left of the board
     fn calculate_positions(num_gems: usize) -> Vec<Point<f32>> {
         let mut positions: Vec<Point<f32>> = Vec::new();
@@ -172,7 +169,7 @@ impl Animation for Explosion {
     fn draw_background(
         &self,
         printer: &Printer,
-        _: &Vec<Gem>,
+        _: &[Gem],
         width: usize,
         board_offset: &Point<usize>,
     ) {
@@ -214,7 +211,7 @@ impl Warp {
         let mut y = 0.0;
         while !(x < y) {
             // Draws points
-            vec![
+            [
                 cursive::Vec2::new((origin.0 + x) as usize, (origin.1 - y) as usize),
                 cursive::Vec2::new((origin.0 + x) as usize, (origin.1 + y) as usize),
                 cursive::Vec2::new((origin.0 - x) as usize, (origin.1 - y) as usize),
@@ -234,8 +231,8 @@ impl Warp {
                 }
             });
             // Increments
-            y = y + 1.0;
-            t1 = t1 + y;
+            y += 1.0;
+            t1 += y;
             let t2 = t1 - x;
             if t2 >= 0.0 {
                 t1 = t2;
@@ -250,9 +247,9 @@ impl Animation for Warp {
     fn tick(&mut self) {
         self.keyframe += 1;
         // Get center of board
-        let mut center = Point((f32::sqrt(self.positions.len() as f32) / 2.0) as f32, 0.0);
+        let mut center = Point(f32::sqrt(self.positions.len() as f32) / 2.0, 0.0);
         center.1 = center.0;
-        center.0 = center.0 * 3.0;
+        center.0 *= 3.0;
         // For each gem...
         for i in 0..self.positions.len() {
             let distance = Point::<f32>::distance_to(self.positions[i], center) + 0.5;
@@ -320,7 +317,7 @@ impl Animation for Warp {
         self.keyframe
     }
 
-    fn draw_background(&self, printer: &Printer, _: &Vec<Gem>, _: usize, _: &Point<usize>) {
+    fn draw_background(&self, printer: &Printer, _: &[Gem], _: usize, _: &Point<usize>) {
         self.circles.iter().for_each(|circle| {
             Warp::draw_circle(
                 printer,
