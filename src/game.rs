@@ -261,7 +261,7 @@ impl Board {
     ///        c. Record the gems we inserted and their positions in the gem buffer.
     pub fn fill_gem_buffer(&mut self) {
         // 1. Clone data and make everything fall down.
-        let mut data_clone = self.data.clone();
+        let mut data_clone = self.data;
         loop {
             let mut gem_fell = false;
             for i in 0..(data_clone.len() - self.get_width()) {
@@ -281,7 +281,6 @@ impl Board {
         loop {
             // Consider some case starting from data_clone
             let case: [Gem; 64] = data_clone
-                .clone()
                 .into_iter()
                 .map(|gem| {
                     if gem == Gem::Empty {
@@ -302,15 +301,13 @@ impl Board {
                     }
                 }
                 // Find the first empty spot in data_clone, make that a hypercube
-                for i in 0..data_clone.len() {
-                    if data_clone[i] == Gem::Empty {
+                for (i, gem) in data_clone.iter().enumerate() {
+                    if *gem == Gem::Empty {
                         self.buffer[i] = Gem::Hypercube(GemSelector::None);
                     }
                 }
                 break;
-            } else if !self.config.infinite
-                || (self.config.infinite && Board::from_data(case).is_valid())
-            {
+            } else if !self.config.infinite || Board::from_data(case).is_valid() {
                 // Record the gems we inserted and their positions in the gem buffer.
                 for i in 0..case.len() {
                     if case[i] != data_clone[i] {
@@ -387,7 +384,7 @@ impl Board {
         }
         // Otherwise swap the gems
         else {
-            self.swap_explicit(self.cursor.clone(), destination)
+            self.swap_explicit(self.cursor, destination)
         }
     }
 
@@ -400,11 +397,7 @@ impl Board {
     pub fn swap_explicit(&mut self, source: Point<usize>, destination: Point<usize>) {
         let destination_index = self.point_to_index(destination);
         let source_index = self.point_to_index(source);
-        // Stores a to be swapped value in memory.
-        let temp = self.data[destination_index];
-        // Swaps two things
-        self.data[destination_index] = self.data[source_index];
-        self.data[source_index] = temp;
+        self.data.swap(destination_index, source_index);
     }
 
     /// Returns true if a point [x,y] is in a the board.
@@ -446,7 +439,7 @@ impl Board {
             });
         }
         // Iteratively loop to make sure we activated all gems recursively
-        while special_gems_found.len() != 0 {
+        while !special_gems_found.is_empty() {
             let mut special_gems_new: Vec<Point<usize>> = Vec::new();
             special_gems_found.iter().for_each(|special_gem| {
                 let special_gem_index = self.point_to_index(*special_gem);
@@ -572,7 +565,7 @@ impl Board {
             }
         });
         // TODO: memcpy should be finnnee but make it faster
-        let data_clone = self.data.clone();
+        let data_clone = self.data;
         // Set every matching gem and (matching) special gem to empty
         matching_gems.append(&mut self.get_matching_special_gems());
         matching_gems.iter().for_each(|point| {
@@ -594,7 +587,7 @@ impl Board {
 
     /// Returns true if the entire board is filled with gems.
     pub fn is_full(&self) -> bool {
-        self.data.iter().find(|x| Gem::Empty == **x) == None
+        !self.data.iter().any(|x| Gem::Empty == *x)
     }
 
     /// Returns true if you can make a move on the board.
@@ -640,7 +633,7 @@ impl Board {
             // 1. Check if the cursor and destination are in the map.
             if self.is_in_board(self.cursor) && self.is_in_board(destination) {
                 // 2. Copy the board
-                let mut data_copy = self.data.clone();
+                let mut data_copy = self.data;
                 // 3. Swap the gems in this board.
                 let destination_index = self.point_to_index(destination);
                 let source_index = self.point_to_index(point);
@@ -703,10 +696,8 @@ impl Board {
         {
             true
         // Special gems!
-        } else if let Gem::Hypercube(_) = self.data[point_index] {
-            true
         } else {
-            false
+            matches!(self.data[point_index], Gem::Hypercube(_))
         }
     }
 
@@ -730,7 +721,7 @@ impl Board {
 
     /// Gets the coordinates of the cursor
     pub fn get_cursor(&self) -> Point<usize> {
-        self.cursor.clone()
+        self.cursor
     }
 
     /// Returns a reference to self.data

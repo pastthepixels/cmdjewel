@@ -95,11 +95,8 @@ impl BoardView {
     }
 
     fn attempt_swap(&mut self, direction: game::Direction) {
-        if self
-            .board
-            .is_valid_move(self.board.get_cursor(), direction.clone())
-        {
-            self.board.swap(direction.clone());
+        if self.board.is_valid_move(self.board.get_cursor(), direction) {
+            self.board.swap(direction);
         }
         self.cursor_mode = CursorMode::Normal;
     }
@@ -123,7 +120,7 @@ impl BoardView {
             self.board
                 .get_matching_gems()
                 .into_iter()
-                .chain(self.board.get_matching_special_gems().into_iter())
+                .chain(self.board.get_matching_special_gems())
                 .for_each(|x| {
                     if !points.contains(&x) {
                         self.animations.push(Animation {
@@ -273,13 +270,13 @@ impl cursive::view::View for BoardView {
             self.animations.iter().for_each(|anim| {
                 if anim.point.0 == point.0
                     && anim.point.1 == point.1
-                    && (*anim).animation_type == AnimationType::Highlight
+                    && anim.animation_type == AnimationType::Highlight
                 {
                     color = color.invert();
                 }
             });
             // If there's no animation happening, you can theme the cell under whatever conditions.
-            if self.animations.len() == 0 {
+            if self.animations.is_empty() {
                 // for instance, this is the cursor.
                 if i == self.board.point_to_index(self.board.get_cursor()) {
                     color = match self.cursor_mode {
@@ -335,7 +332,7 @@ impl cursive::view::View for BoardView {
                         self.create_animations();
                     }
                     // Update board
-                    if self.animations.len() == 0 {
+                    if self.animations.is_empty() {
                         self.update_board();
                     }
                 }
@@ -343,13 +340,12 @@ impl cursive::view::View for BoardView {
                 let score = self.board.get_score();
                 let level = self.board.get_level() + 1;
                 let progress = self.board.get_level_progress() * 100.;
-                let mut is_valid = self
+                let mut is_valid = !self
                     .animations
                     .iter()
-                    .find(|x| (**x).animation_type == AnimationType::Explosion)
-                    .is_none();
+                    .any(|x| x.animation_type == AnimationType::Explosion);
                 // Sets is_valid to true and shuffles if the board is not valid
-                if is_valid == false && self.board.config_ref().infinite {
+                if !is_valid && self.board.config_ref().infinite {
                     //self.board.shuffle();
                     is_valid = true;
                 }
@@ -357,13 +353,12 @@ impl cursive::view::View for BoardView {
                 if self
                     .animations
                     .iter()
-                    .find(|x| (**x).animation_type == AnimationType::Warp)
-                    .is_some()
+                    .any(|x| x.animation_type == AnimationType::Warp)
                 {
                     initial_level = level + 1; // Now initial_level != level
                 }
                 // Hacks initial_level if we don't want to use animations
-                if self.animations_enabled == false {
+                if !self.animations_enabled {
                     initial_level = level;
                 }
                 EventResult::with_cb(move |s| {
@@ -377,7 +372,7 @@ impl cursive::view::View for BoardView {
                         p.set_value(progress as usize)
                     });
                     // Explodes if applicable
-                    if is_valid == false {
+                    if !is_valid {
                         let data = s
                             .call_on_name("board", |b: &mut BoardView| b.board.as_ref().to_vec())
                             .unwrap();
@@ -388,7 +383,7 @@ impl cursive::view::View for BoardView {
                             )
                             .with_on_finish(move |s| {
                                 ui::show_menu_main(s);
-                                s.add_layer(Dialog::info(&format!(
+                                s.add_layer(Dialog::info(format!(
                                     "Game over! You scored {} points and got to level {}.",
                                     score, level
                                 )));

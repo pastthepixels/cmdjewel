@@ -29,7 +29,7 @@ fn main() {
                 use cursive::style::Effect::*;
                 use cursive::style::PaletteStyle::*;
                 use cursive::style::Style;
-                palette[Highlight] = Style::from(palette[Highlight]).combine(Bold);
+                palette[Highlight] = palette[Highlight].combine(Bold);
                 palette[EditableTextCursor] = Style::secondary().combine(Reverse).combine(Underline)
             }
         }),
