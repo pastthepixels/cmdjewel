@@ -18,13 +18,6 @@ one using the arrow keys. Alternatively you can use Vim keybinds (h, j, k, l) by
 
 If you notice everything's too small, try changing your terminal's font size. The game is designed to run at any font size (as long as everything fits!)
 
-# Credits
-
-This game uses beyond_the_network.it:
-- by Skaven252,
-- retrieved from [The Mod Archive](https://modarchive.org/index.php?request=view_by_moduleid&query=156184),
-- and under a CC-BY-NC-ND 4.0 license.
-
 # TODO (0.2.0):
 - [x] Special gems having chain reactions (e.g. a hypercube on a flame gem will explode it rather than remove it)
 - [x] Spawn special gems where they were matched (rather than storing more metadata logic should be moved around)
