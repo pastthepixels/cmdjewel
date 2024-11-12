@@ -37,15 +37,16 @@ fn main() {
     });
     // Sets the terminal background (hack that works on some terminals that I got from pywal16)
     println!("\x1b]11;#2E3440\x07");
+    // set up music
+    let mut module_player = music::ModulePlayer::new("cmdjewel.it");
+    module_player.generate_stream();
+    module_player.play();
+    siv.set_user_data(module_player);
     // show the main menu
     ui::show_menu_main(&mut siv);
     // set up commands
     ui::init_commands(&mut siv);
     siv.add_global_callback('`', cursive::Cursive::toggle_debug_console);
-    // set up music
-    let mut module_player = music::ModulePlayer::new("cmdjewel.it");
-    module_player.generate_stream();
-    module_player.play();
     // Set the refresh rate to 30 FPS and run
     siv.set_autorefresh(true);
     siv.run();

@@ -1,4 +1,5 @@
 use crate::game::BoardConfig;
+use crate::music::ModulePlayer;
 // Handles game UI.
 use crate::view::BoardView;
 use cursive::event::Event;
@@ -11,6 +12,9 @@ use cursive::Cursive;
 // Menus
 pub fn show_menu_main(s: &mut Cursive) {
     s.pop_layer();
+    // Soundtrack
+    let module_player: &mut ModulePlayer = s.user_data().unwrap();
+    module_player.module.set_pattern(0);
     // Creates a button list
     let buttons = LinearLayout::vertical()
         .child(Button::new("Classic", |s| {
@@ -30,6 +34,9 @@ pub fn show_menu_main(s: &mut Cursive) {
 // Game
 pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     s.pop_layer();
+    // Soundtrack
+    let module_player: &mut ModulePlayer = s.user_data().unwrap();
+    module_player.module.set_pattern(1);
     let name = config.name.clone();
     // Creates the layout for the dialog
     let layout = LinearLayout::vertical()
@@ -62,7 +69,7 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
         ));
 
     // Creates the dialog
-    let game_dialog = Dialog::around(layout).title(name); // TODO: rename to zen when appropriate
+    let game_dialog = Dialog::around(layout).title(name);
 
     // Adds the dialog into a new layer
     s.add_layer(game_dialog);

@@ -18,7 +18,7 @@ fn desired_config(cfg: &SupportedStreamConfigRange) -> bool {
 }
 
 #[derive(Debug, Clone)]
-struct Module {
+pub struct Module {
     handle: *mut openmpt_sys::openmpt_module,
 }
 
@@ -35,12 +35,18 @@ impl Module {
             );
         };
     }
+
+    pub fn set_pattern(&mut self, pattern: i32) {
+        unsafe {
+            openmpt_sys::openmpt_module_set_position_order_row(self.handle, pattern, 0);
+        }
+    }
 }
 
 unsafe impl Send for Module {}
 
 pub struct ModulePlayer {
-    module: Module,
+    pub module: Module,
     stream: Option<Stream>,
 }
 
