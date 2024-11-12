@@ -4,5 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+cpal = "0.15.3"
 cursive = "0.21.1"
+openmpt-sys = "0.2.0"
 rand = "0.8.5"

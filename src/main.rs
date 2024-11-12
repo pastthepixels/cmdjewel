@@ -1,5 +1,6 @@
 mod animations;
 mod game;
+mod music;
 mod ui;
 mod view;
 
@@ -41,6 +42,10 @@ fn main() {
     // set up commands
     ui::init_commands(&mut siv);
     siv.add_global_callback('`', cursive::Cursive::toggle_debug_console);
+    // set up music
+    let mut module_player = music::ModulePlayer::new("cmdjewel.it");
+    module_player.generate_stream();
+    module_player.play();
     // Set the refresh rate to 30 FPS and run
     siv.set_autorefresh(true);
     siv.run();
