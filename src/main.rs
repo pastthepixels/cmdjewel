@@ -38,8 +38,10 @@ fn main() {
     // Sets the terminal background (hack that works on some terminals that I got from pywal16)
     println!("\x1b]11;#2E3440\x07");
     // set up music
-    let mut module_player = music::ModulePlayer::new("cmdjewel.it");
+    let mut module_player =
+        music::ModulePlayer::from_bytes(Vec::from(include_bytes!("../cmdjewel.it")));
     module_player.generate_stream();
+    module_player.module.set_pattern(0);
     module_player.play();
     siv.set_user_data(module_player);
     // show the main menu

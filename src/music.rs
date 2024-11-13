@@ -51,9 +51,12 @@ pub struct ModulePlayer {
 }
 
 impl ModulePlayer {
-    pub fn new(file_path: &str) -> Self {
+    // pub fn new(file_path: &str) -> Self {
+    //     ModulePlayer::from_bytes(std::fs::read(file_path).unwrap())
+    // }
+
+    pub fn from_bytes(mod_data: Vec<u8>) -> Self {
         // Set up module data
-        let mod_data = std::fs::read(file_path).unwrap();
         let mod_handle = unsafe {
             openmpt_sys::openmpt_module_create_from_memory2(
                 mod_data.as_ptr() as *const c_void,
