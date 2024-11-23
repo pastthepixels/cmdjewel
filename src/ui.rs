@@ -14,7 +14,7 @@ pub fn show_menu_main(s: &mut Cursive) {
     s.pop_layer();
     // Soundtrack
     let module_player: &mut ModulePlayer = s.user_data().unwrap();
-    module_player.module.set_pattern(0);
+    module_player.module.set_pattern(0x02);
     // Creates a button list
     let buttons = LinearLayout::vertical()
         .child(Button::new("Classic", |s| {
@@ -36,7 +36,7 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     s.pop_layer();
     // Soundtrack
     let module_player: &mut ModulePlayer = s.user_data().unwrap();
-    module_player.module.set_pattern(1);
+    module_player.module.set_pattern(0x0D); // B0D
     let name = config.name.clone();
     // Creates the layout for the dialog
     let layout = LinearLayout::vertical()
