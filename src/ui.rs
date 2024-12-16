@@ -3,7 +3,7 @@ use crate::music::ModulePlayer;
 // Handles game UI.
 use crate::view::BoardView;
 use cursive::event::Event;
-use cursive::view::{Nameable, Resizable};
+use cursive::view::{Margins, Nameable, Offset, Resizable};
 use cursive::views::{
     Button, Dialog, EditView, LinearLayout, NamedView, OnEventView, Panel, ProgressBar, TextView,
 };
@@ -17,18 +17,43 @@ pub fn show_menu_main(s: &mut Cursive) {
     module_player.module.set_pattern(0x02);
     // Creates a button list
     let buttons = LinearLayout::vertical()
-        .child(Button::new("Classic", |s| {
+        .child(Button::new_raw("[ Classic ]", |s| {
             show_game(s, BoardConfig::new_classic());
         }))
-        .child(Button::new("Zen", |s| {
+        .child(TextView::new("\n"))
+        .child(Button::new_raw("[   Zen   ]", |s| {
             show_game(s, BoardConfig::new_zen());
         }));
     // Adds the dialog
     s.add_layer(
         Dialog::around(buttons)
-            .title("welcome to cmdjewel")
-            .button("Quit", |s| s.quit()),
+            .title("cmdjewel - main menu")
+            .button("Quit", |s| s.quit())
+            .padding(Margins::lrtb(1, 1, 1, 1)),
     );
+}
+
+pub fn show_menu_start(s: &mut Cursive) {
+    s.pop_layer();
+    s.add_layer(
+        LinearLayout::vertical()
+            .child(TextView::new(
+                "
+                    _  _                   _
+  ___ _ __ ___   __| |(_) _____      _____| |
+ / __| '_ ` _ \\ / _` || |/ _ \\ \\ /\\ / / _ \\ |
+| (__| | | | | | (_| || |  __/\\ V  V /  __/ |
+ \\___|_| |_| |_|\\__,_|/ |\\___| \\_/\\_/ \\___|_|
+                    |__/
+    ",
+            ))
+            .child(Button::new_raw("Play Game", show_menu_main)),
+    );
+
+    // s.reposition_layer(
+    //     cursive::views::LayerPosition::FromFront(0),
+    //     cursive::XY::absolute(s.screen_size() / 2 - (1, 0)),
+    // );
 }
 
 // Game

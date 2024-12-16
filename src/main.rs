@@ -41,11 +41,10 @@ fn main() {
     let mut module_player =
         music::ModulePlayer::from_bytes(Vec::from(include_bytes!("../cmdjewel.it")));
     module_player.generate_stream();
-    module_player.module.set_pattern(0);
     module_player.play();
     siv.set_user_data(module_player);
-    // show the main menu
-    ui::show_menu_main(&mut siv);
+    // show the start screen
+    ui::show_menu_start(&mut siv);
     // set up commands
     ui::init_commands(&mut siv);
     siv.add_global_callback('`', cursive::Cursive::toggle_debug_console);
