@@ -1,2 +1,2 @@
 #!/bin/bash
-sudo apt install -y libopenmpt libopenmpt-dev
+apt install -y libopenmpt libopenmpt-dev
