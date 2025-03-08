@@ -14,7 +14,7 @@ use rand::{
 const POINTS_SWAP: u8 = 30;
 
 // Specifies how much a swap counts toward progressing through each level, for each gem successfully swapped.
-const PROGRESS_SWAP_INITIAL: f32 = 0.05;
+const PROGRESS_SWAP_INITIAL: f32 = 0.025;
 const PROGRESS_SWAP_FALLOFF: f32 = 0.9; // PROGRESS_SWAP_INITIAL gets multiplied by this for each level
 const PROGRESS_SWAP_MIN: f32 = 0.001;
 

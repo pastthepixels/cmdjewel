@@ -310,7 +310,7 @@ impl Animation for Warp {
     }
 
     fn get_max_keyframe(&self) -> usize {
-        256
+        150
     }
 
     fn get_keyframe(&self) -> usize {
