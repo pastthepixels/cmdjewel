@@ -20,7 +20,6 @@ mkdir build/windows/ -p
 
 # Pull images
 podman pull registry.fedoraproject.org/fedora:latest
-podman pull mcr.microsoft.com/windows:ltsc2019
 
 # 1. Build for Linux amd64
 #-----------------------------------------------
@@ -52,3 +51,7 @@ podman exec -itu root -w cmdjewel --env RUSTFLAGS="-L /openmpt/bin/amd64" cmdjew
 # Done!
 cp target/x86_64-pc-windows-gnu/release/cmdjewel.exe build/windows/cmdjewel.exe
 podman exec -itu root cmdjewel_build cp find /openmpt/bin/amd64/ -type f -exec cp {} /cmdjewel/build/windows/ \;
+
+# 3. Done!
+#-----------------------------------------------
+podman rm -f cmdjewel_build

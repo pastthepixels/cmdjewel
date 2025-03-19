@@ -20,15 +20,13 @@ one using the arrow keys. Alternatively you can use Vim keybinds (h, j, k, l) by
 
 If you notice everything's too small, try changing your terminal's font size. The game is designed to run at any font size (as long as everything fits!)
 
-# TODO (0.2.0):
-- [x] Special gems having chain reactions (e.g. a hypercube on a flame gem will explode it rather than remove it)
-- [x] Spawn special gems where they were matched (rather than storing more metadata logic should be moved around)
-- [x] When looking for gem combinations, make sure they were not created by special gems (e.g. star gems can't make matches of 6) (may have to store metadata?)
-- [x] Hypercubes matched with each other just destroy each other. (new struct for a selection of gems)
-    - nope they now destroy the whole board because it's easier
-- [x] The number of points it takes to advance levels constantly increases with each level.
-
-# TODO (0.3.0 - can't accept PR's until 0.2.0 is released):
+# TODO:
+- [ ] MacOS export
+- [ ] Better title screen logo
+- [ ] Animated title screen background
+- [ ] Animation from moving from the title screen to main menu
+- [ ] Main menu resembling Bejeweled 3
+- [ ] Sound effects
 - [ ] Special gems that explode hypercubes activate those hypercubes
 - [x] Hypercube with hypercube matching
 - [ ] Star gems
