@@ -1,4 +1,4 @@
-![cmdjewel](logo.svg)
+![cmdjewel](assets/images/logo.svg)
 ========
 
 [cmdjewel.webm](https://github.com/user-attachments/assets/4173f720-140a-40ca-bd05-ac8a7674ebf0)
