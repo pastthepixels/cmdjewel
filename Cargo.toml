@@ -4,7 +4,7 @@ version = "0.2.0"
 edition = "2021"
 
 [dependencies]
-cpal = "0.15.3"
+cpal = "0.16.0"
 cursive = "0.21.1"
-openmpt-sys = "0.2.0"
+openmpt_sys = { git = "https://codeberg.org/tazz4843/openmpt-sys" }
 rand = "0.8.5"
