@@ -13,10 +13,20 @@ env:
 
 jobs:
 
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: |
+        sudo apt-get update
+        sudo apt-get install librust-alsa-dev
+        cargo build --verbose --release
+
   build:
     strategy:
        matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
