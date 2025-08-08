@@ -35,7 +35,7 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         name: cmdjewel-${{ matrix.os }}
-        path: target/x86_64-pc-windows-gnu/cmdjewel*
+        path: target/x86_64-pc-windows-gnu/release/cmdjewel*
 
   build:
     strategy:
