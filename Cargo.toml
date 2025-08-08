@@ -6,5 +6,5 @@ edition = "2021"
 [dependencies]
 cpal = "0.16.0"
 cursive = "0.21.1"
-openmpt_sys = { git = "https://codeberg.org/tazz4843/openmpt-sys" }
+openmpt_sys = { git = "https://codeberg.org/pastthepixels/openmpt-sys" }
 rand = "0.8.5"
