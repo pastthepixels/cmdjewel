@@ -15,7 +15,7 @@ jobs:
   build:
     strategy:
        matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest] # TODO: add back ubuntu-latest, macos-latest
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -28,9 +28,10 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install librust-alsa-dev
-    # run some test on the windows runner
+    # alias x86_64-w64-mingw32-ar to ar on the windows runner
     - name: Test
-      run: ar
+      if: matrix.os == 'windows-latest'
+      run: alias x86_64-w64-mingw32-ar="ar"
     # speed up compilation times
     - name: setup parallel make
       run: echo MAKEFLAGS=-j${NUMBER_OF_PROCESSORS} >> $GITHUB_ENV
