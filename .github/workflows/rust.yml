@@ -17,9 +17,9 @@ jobs:
        matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
+    #defaults:
+    #  run:
+    #    shell: bash
     steps:
     - uses: actions/checkout@v4
     - name: Install librust-alsa-dev
@@ -27,5 +27,8 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install librust-alsa-dev
+    - name: Set up MSVC
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1.4.1
     - name: Build
       run: cargo build --verbose --release
