@@ -23,7 +23,7 @@ jobs:
       with:
         msystem: MINGW64
         update: true
-        install: msys/base-devel msys/autoconf mingw64/mingw-w64-x86_64-toolchain msys/autoconf-archive msys/automake msys/ccache msys/doxygen msys/gawk msys/help2man msys/libtool msys/git msys/p7zip msys/perl-XML-LibXML msys/subversion msys/unzip msys/xz msys/zip mingw64/mingw-w64-x86_64-clang mingw64/mingw-w64-x86_64-flac mingw64/mingw-w64-x86_64-libltdl mingw64/mingw-w64-x86_64-libogg mingw64/mingw-w64-x86_64-libsndfile mingw64/mingw-w64-x86_64-libvorbis mingw64/mingw-w64-x86_64-mpg123 mingw64/mingw-w64-x86_64-portaudio mingw64/mingw-w64-x86_64-pulseaudio mingw64/mingw-w64-x86_64-SDL2 mingw64/mingw-w64-x86_64-zlib
+        install: msys/base-devel msys/autoconf mingw64/mingw-w64-x86_64-rust mingw64/mingw-w64-x86_64-toolchain msys/autoconf-archive msys/automake msys/ccache msys/doxygen msys/gawk msys/help2man msys/libtool msys/git msys/p7zip msys/perl-XML-LibXML msys/subversion msys/unzip msys/xz msys/zip mingw64/mingw-w64-x86_64-clang mingw64/mingw-w64-x86_64-flac mingw64/mingw-w64-x86_64-libltdl mingw64/mingw-w64-x86_64-libogg mingw64/mingw-w64-x86_64-libsndfile mingw64/mingw-w64-x86_64-libvorbis mingw64/mingw-w64-x86_64-mpg123 mingw64/mingw-w64-x86_64-portaudio mingw64/mingw-w64-x86_64-pulseaudio mingw64/mingw-w64-x86_64-SDL2 mingw64/mingw-w64-x86_64-zlib
     - name: setup parallel make
       run: echo MAKEFLAGS=-j${NUMBER_OF_PROCESSORS} >> $GITHUB_ENV
     - name: Build
