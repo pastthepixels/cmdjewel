@@ -12,10 +12,35 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  build-windows:
+    strategy:
+       matrix:
+        os: [windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash # fixes mingw things on windows
+    steps:
+    - uses: actions/checkout@v4
+    # alias x86_64-w64-mingw32-ar to ar on the windows runner
+    - name: ar alias
+      run: cp C:\\mingw64\\bin\\ar.exe /bin/x86_64-w64-mingw32-ar
+    # speed up compilation times
+    - name: setup parallel make
+      run: echo MAKEFLAGS=-j${NUMBER_OF_PROCESSORS} >> $GITHUB_ENV
+    # build cmdjewel with cargo
+    - name: Build
+      run: cargo build --verbose --release --target=x86_64-pc-windows-gnu
+    # upload builds named after each runner (the linux one is cmdjewel-ubuntu-latest, built on ubuntu-latest)
+    - uses: actions/upload-artifact@v4
+      with:
+        name: cmdjewel-${{ matrix.os }}
+        path: target/release/cmdjewel*
+
   build:
     strategy:
        matrix:
-        os: [windows-latest] # TODO: add back ubuntu-latest, macos-latest
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -28,10 +53,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install librust-alsa-dev
-    # alias x86_64-w64-mingw32-ar to ar on the windows runner
-    - name: Test
-      if: matrix.os == 'windows-latest'
-      run: cp C:\\mingw64\\bin\\ar.exe /bin/x86_64-w64-mingw32-ar
     # speed up compilation times
     - name: setup parallel make
       run: echo MAKEFLAGS=-j${NUMBER_OF_PROCESSORS} >> $GITHUB_ENV
