@@ -31,9 +31,7 @@ jobs:
     # alias x86_64-w64-mingw32-ar to ar on the windows runner
     - name: Test
       if: matrix.os == 'windows-latest'
-      run: |
-        where as
-        touch /bin/test
+      run: where ar
     # speed up compilation times
     - name: setup parallel make
       run: echo MAKEFLAGS=-j${NUMBER_OF_PROCESSORS} >> $GITHUB_ENV
