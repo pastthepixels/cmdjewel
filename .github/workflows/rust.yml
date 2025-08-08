@@ -12,37 +12,29 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: msys2 {0}
-    steps:
-    - uses: actions/checkout@v4
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        update: true
-        install: msys/base-devel msys/autoconf mingw64/mingw-w64-x86_64-mpg123 mingw64/mingw-w64-x86_64-rust mingw64/mingw-w64-x86_64-toolchain msys/autoconf-archive msys/automake msys/ccache msys/doxygen msys/gawk msys/help2man msys/libtool msys/git msys/p7zip msys/perl-XML-LibXML msys/subversion msys/unzip msys/xz msys/zip mingw64/mingw-w64-x86_64-clang mingw64/mingw-w64-x86_64-flac mingw64/mingw-w64-x86_64-libltdl mingw64/mingw-w64-x86_64-libogg mingw64/mingw-w64-x86_64-libsndfile mingw64/mingw-w64-x86_64-libvorbis mingw64/mingw-w64-x86_64-mpg123 mingw64/mingw-w64-x86_64-portaudio mingw64/mingw-w64-x86_64-pulseaudio mingw64/mingw-w64-x86_64-SDL2 mingw64/mingw-w64-x86_64-zlib
-    - name: setup parallel make
-      run: echo MAKEFLAGS=-j${NUMBER_OF_PROCESSORS} >> $GITHUB_ENV
-    - name: Build
-      run: CARGO_NET_GIT_FETCH_WITH_CLI=true cargo build --verbose --release
-
   build:
     strategy:
        matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash # fixes mingw things on windows
     steps:
     - uses: actions/checkout@v4
+    # install alsa rust bindings on the ubuntu runner
     - name: Install librust-alsa-dev
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
         sudo apt-get install librust-alsa-dev
+    # speed up compilation times
+    - name: setup parallel make
+      run: echo MAKEFLAGS=-j${NUMBER_OF_PROCESSORS} >> $GITHUB_ENV
+    # build cmdjewel with cargo
     - name: Build
       run: cargo build --verbose --release
+    # upload builds named after each runner (the linux one is cmdjewel-ubuntu-latest, built on ubuntu-latest)
     - uses: actions/upload-artifact@v4
       with:
         name: cmdjewel-${{ matrix.os }}
