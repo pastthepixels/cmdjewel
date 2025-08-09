@@ -27,6 +27,7 @@ jobs:
       run: |
         sudo dnf install -y rustup
         rustup-init -y
+        rustup target add x86_64-pc-windows-gnu
     # set flags
     - name: Set LDFLAGS
       run: echo LDFLAGS="-static-libstdc++ -static-libgcc -static" >> $GITHUB_ENV
