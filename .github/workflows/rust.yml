@@ -24,7 +24,7 @@ jobs:
     - name: Install MinGW
       run: sudo dnf install -y mingw64-gcc-c++.x86_64 mingw32-gcc-c++.x86_64
     - name: Install rust
-      run: sudo dnf install rust cargo
+      run: sudo dnf install -y rust cargo
     # set flags
     - name: Set LDFLAGS
       run: echo LDFLAGS="-static-libstdc++ -static-libgcc -static" >> $GITHUB_ENV
@@ -34,6 +34,7 @@ jobs:
     - name: Build
       run: cargo build -vv --release --target=x86_64-pc-windows-gnu
     # upload builds
+    # NOTE: for some reason, statically linking these dll's won't actually work, so we're just going to bundle them because i spent a day on this and my head hurts.
     - uses: actions/upload-artifact@v4
       with:
         name: cmdjewel-windows-latest
