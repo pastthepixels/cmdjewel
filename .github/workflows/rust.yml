@@ -28,9 +28,12 @@ jobs:
     # speed up compilation times
     - name: setup parallel make
       run: echo MAKEFLAGS=-j${NUMBER_OF_PROCESSORS} >> $GITHUB_ENV
+    # set ldflags
+    - name: Set LDFLAGS
+      run: echo LDFLAGS="-static-libstdc++ -static-libgcc -static" >> $GITHUB_ENV
     # build cmdjewel with cargo
     - name: Build
-      run: LDFLAGS="-static-libstdc++ -static-libgcc -static" cargo build --verbose --release --target=x86_64-pc-windows-gnu
+      run: cargo build --verbose --release --target=x86_64-pc-windows-gnu
     # upload builds named after each runner (the linux one is cmdjewel-ubuntu-latest, built on ubuntu-latest)
     - uses: actions/upload-artifact@v4
       with:
