@@ -35,6 +35,8 @@ jobs:
     - name: Set OPENMPT_ARGS
       run: echo OPENMPT_ARGS="AUTO_DEPS=1 CONFIG=mingw-w64 WINDOWS_ARCH=amd64 WINDOWS_CRT=msvcrt WINDOWS_VERSION=win10" >> $GITHUB_ENV
     # build cmdjewel with cargo
+    - name: Test...
+      run: ls /usr/x86_64-w64-mingw32/sys-root/mingw/bin/
     - name: Build
       run: |
         . "$HOME/.cargo/env"
@@ -45,10 +47,10 @@ jobs:
       with:
         name: cmdjewel-windows-latest
         path: |
-          target/x86_64-pc-windows-gnu/release/cmdjewel*
           /usr/x86_64-w64-mingw32/sys-root/mingw/bin/libstdc++-6.dll
           /usr/x86_64-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
           /usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgcc_s_seh-1.dll
+          target/x86_64-pc-windows-gnu/release/cmdjewel*
 
   build:
     strategy:
