@@ -27,7 +27,6 @@ jobs:
       run: |
         sudo dnf install -y rustup
         rustup-init -y
-        . "$HOME/.cargo/env"
     # set flags
     - name: Set LDFLAGS
       run: echo LDFLAGS="-static-libstdc++ -static-libgcc -static" >> $GITHUB_ENV
@@ -35,7 +34,9 @@ jobs:
       run: echo OPENMPT_ARGS="AUTO_DEPS=1 CONFIG=mingw-w64 WINDOWS_ARCH=amd64 WINDOWS_CRT=msvcrt WINDOWS_VERSION=win10" >> $GITHUB_ENV
     # build cmdjewel with cargo
     - name: Build
-      run: cargo build -vv --release --target=x86_64-pc-windows-gnu
+      run: |
+        . "$HOME/.cargo/env"
+        cargo build -vv --release --target=x86_64-pc-windows-gnu
     # upload builds
     # NOTE: for some reason, statically linking these dll's won't actually work, so we're just going to bundle them because i spent a day on this and my head hurts.
     - uses: actions/upload-artifact@v4
