@@ -27,6 +27,7 @@ jobs:
       run: |
         sudo dnf install -y rustup
         rustup-init -y
+        . "$HOME/.cargo/env"
         rustup target add x86_64-pc-windows-gnu
     # set flags
     - name: Set LDFLAGS
