@@ -13,31 +13,33 @@ env:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: bash # fixes mingw things on windows
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
     steps:
     - uses: actions/checkout@v4
-    # alias x86_64-w64-mingw32-ar to ar on the windows runner
-    - name: ar alias
-      run: cp C:\\mingw64\\bin\\ar.exe /bin/x86_64-w64-mingw32-ar
-    # speed up compilation times
-    - name: setup parallel make
-      run: echo MAKEFLAGS=-j${NUMBER_OF_PROCESSORS} >> $GITHUB_ENV
-    # set ldflags/rustflags
-    - name: Set LDFLAGS/RUSTFLAGS
-      run: |
-        echo RUSTFLAGS="-Clink-arg=-static-libstdc++" >> $GITHUB_ENV
-        echo LDFLAGS="-static-libstdc++ -static-libgcc -static" >> $GITHUB_ENV
+    # install dependencies
+    - name: Install OpenMPT dependencies
+      run: dnf -y upgrade --refresh && dnf -y install subversion perl-XML-XPath git mawk zip unzip p7zip xz make binutils gcc gcc-g++ clang pkgconf help2man doxygen autoconf autoconf-archive automake libtool ccache zlib-devel mpg123-devel libogg-devel libvorbis-devel portaudio-devel pulseaudio-libs-devel SDL2-devel flac-devel libsndfile-devel libtool-ltdl-devel
+    - name: Install MinGW
+      run: sudo dnf install -y mingw64-gcc-c++.x86_64 mingw32-gcc-c++.x86_64
+    # set flags
+    - name: Set LDFLAGS
+      run: echo LDFLAGS="-static-libstdc++ -static-libgcc -static" >> $GITHUB_ENV
+    - name: Set OPENMPT_ARGS
+      run: echo OPENMPT_ARGS="AUTO_DEPS=1 CONFIG=mingw-w64 WINDOWS_ARCH=amd64 WINDOWS_CRT=msvcrt WINDOWS_VERSION=win10" >> $GITHUB_ENV
     # build cmdjewel with cargo
     - name: Build
       run: cargo build -vv --release --target=x86_64-pc-windows-gnu
-    # upload builds named after the runner
+    # upload builds
     - uses: actions/upload-artifact@v4
       with:
         name: cmdjewel-windows-latest
-        path: target/x86_64-pc-windows-gnu/release/cmdjewel*
+        path: |
+          target/x86_64-pc-windows-gnu/release/cmdjewel*
+          /usr/x86_64-w64-mingw32/sys-root/mingw/bin/libstdc++-6.dll
+          /usr/x86_64-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
+          /usr/x86_64-w64-mingw32/sys-root/mingw/bin/libgcc_s_seh-1.dll
 
   build:
     strategy:
@@ -55,9 +57,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install librust-alsa-dev
-    # speed up compilation times
-    - name: setup parallel make
-      run: echo MAKEFLAGS=-j${NUMBER_OF_PROCESSORS} >> $GITHUB_ENV
     # build cmdjewel with cargo
     - name: Build
       run: cargo build -vv --release
