@@ -36,7 +36,7 @@ jobs:
       run: echo OPENMPT_ARGS="AUTO_DEPS=1 CONFIG=mingw-w64 WINDOWS_ARCH=amd64 WINDOWS_CRT=msvcrt WINDOWS_VERSION=win10" >> $GITHUB_ENV
     # build cmdjewel with cargo
     - name: Test...
-      run: ls /usr/x86_64-w64-mingw32/sys-root/mingw/bin/
+      run: find / -name "libstdc++-6.dll" 2>/dev/null
     - name: Build
       run: |
         . "$HOME/.cargo/env"
