@@ -35,7 +35,9 @@ fn main() {
             }
         }),
     });
-    // Sets the terminal background (hack that works on some terminals that I got from pywal16)
+    // Sets the terminal background--uses an ANSI escape sequence to run an Operating System Command (OSC)
+    // that gets picked up by your terminal emulator. XTerm (and other emulators) implemented this
+    // as a command to change the background.
     println!("\x1b]11;#2E3440\x07");
     // set up music
     let mut module_player =
@@ -51,4 +53,7 @@ fn main() {
     // Set the refresh rate to 30 FPS and run
     siv.set_autorefresh(true);
     siv.run();
+    // Cleaning up: Reset the background (again on terminals that support it)
+    // Konsole (KDE) doesn't support this, but Alacritty and XTerm do. You might find it's a hit-or-miss with your terminal.
+    println!("\x1b]111;\x07")
 }
