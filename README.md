@@ -9,9 +9,7 @@ cmdjewel is a terminal match-3 game inspired by Bejeweled, written with Rust and
 
 To run cmdjewel from source, you need to have cargo installed. The recommended way of installing it is through [rustup](https://rustup.rs/).
 
-Next, you'll need `libopenmpt`--you can install it on any Linux distribution.
-
-After cloning cmdjewel, type `cargo run` in a terminal.
+After cloning cmdjewel, type `cargo run --release` in a terminal. You might need to install some dependencies for cmdjewel's audio library, such as `alsa-lib-devel` on Fedora Linux.
 
 # Playing
 
