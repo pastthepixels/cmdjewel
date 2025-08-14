@@ -21,7 +21,7 @@ one using the arrow keys. Alternatively you can use Vim keybinds (h, j, k, l) by
 If you notice everything's too small, try changing your terminal's font size. The game is designed to run at any font size (as long as everything fits!)
 
 # TODO:
-- [ ] MacOS export
+- [x] MacOS export
 - [ ] Music/SFX slider
 - [ ] Settings page accessible in-game/main menu
 - [ ] Saving/loading from config files (TOML probably somewhere in ~/.config)
