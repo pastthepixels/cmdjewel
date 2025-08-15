@@ -3,6 +3,7 @@ mod game;
 mod music;
 mod ui;
 mod view;
+mod multiline_button;
 
 use cursive::traits::With;
 
