@@ -2,37 +2,75 @@ use crate::game::BoardConfig;
 use crate::music::ModulePlayer;
 // Handles game UI.
 use crate::view::BoardView;
-use cursive::event::Event;
-use cursive::view::{Margins, Nameable, Offset, Resizable};
+use cursive::event::{Callback, Event, EventResult};
+use cursive::view::{Margins, Nameable, Resizable};
 use cursive::views::{
-    Button, Dialog, EditView, LinearLayout, NamedView, OnEventView, Panel, ProgressBar, TextView,
+    Dialog, EditView, FocusTracker, LinearLayout, NamedView, OnEventView, PaddedView,
+    Panel, ProgressBar, TextView,
 };
+use crate::multiline_button::Button;
 use cursive::Cursive;
 
-// Menus
+/// Shows the main menu, where gamemodes can be selected.
+/// It's a remake of a combination of Bejeweled 3's "Play" screen and its gamemode selector.
 pub fn show_menu_main(s: &mut Cursive) {
     s.pop_layer();
     // Soundtrack
     let module_player: &mut ModulePlayer = s.user_data().unwrap();
     module_player.module.set_pattern(0x02);
     // Creates a button list
+    let button_classic = FocusTracker::new(Button::new_raw("╭───────────╮\n│  Classic  │\n╰───────────╯", |s| {
+        show_game(s, BoardConfig::new_classic());
+    })).on_focus(|_| {
+        EventResult::Consumed(Some(Callback::from_fn(|s| {
+            s.call_on_name("about_gamemode", |view: &mut TextView| view.set_content("A classic game of cmdjewel. Match 3 (or more) gems in a row until you run out of moves."));
+        })))
+    });
+    let button_zen = FocusTracker::new(Button::new_raw("╭───────────╮\n│    Zen    │\n╰───────────╯", |s| {
+        show_game(s, BoardConfig::new_zen());
+    }))
+    .on_focus(|_| {
+        EventResult::Consumed(Some(Callback::from_fn(|s| {
+            s.call_on_name("about_gamemode", |view: &mut TextView| {
+                view.set_content("Like Classic, but you can't run out of moves.")
+            });
+        })))
+    });
     let buttons = LinearLayout::vertical()
-        .child(Button::new_raw("[ Classic ]", |s| {
-            show_game(s, BoardConfig::new_classic());
-        }))
+        .child(button_classic)
         .child(TextView::new("\n"))
-        .child(Button::new_raw("[   Zen   ]", |s| {
-            show_game(s, BoardConfig::new_zen());
-        }));
-    // Adds the dialog
+        .child(button_zen);
+    // Adds buttons in the main menu, and a descriptor of game modes (when hovered)
     s.add_layer(
-        Dialog::around(buttons)
-            .title("cmdjewel - main menu")
-            .button("Quit", |s| s.quit())
-            .padding(Margins::lrtb(1, 1, 1, 1)),
+        LinearLayout::vertical()
+            .child(TextView::new(
+                "
+               ,   .                _.
+  __  ,   ,  _.| __.  __  ,   ,  __  |
+ /  ' |\\ /| /  |   | /__' | , | /__' |
+ \\__, | ' | \\_,|   , \\__, \\/ \\/ \\__, ',_
+                 -'
+    ",
+            ))
+            .child(
+                Dialog::around(buttons)
+                    .title("main menu")
+                    .button("Quit", |s| s.quit())
+                    .padding(Margins::lrtb(0, 0, 1, 0)),
+            )
+            .child(Panel::new(PaddedView::lrtb(
+                1,
+                1,
+                0,
+                0,
+                NamedView::new("about_gamemode", TextView::new("Welcome to cmdjewel!\nUse the arrow keys and enter to move around.")),
+            ).min_height(3)))
+            .max_width(40),
     );
 }
 
+/// Shows the start menu, or splash screen.
+/// This is a remake of a combination of Bejeweled 3's loading screen and its "Play" screen.
 pub fn show_menu_start(s: &mut Cursive) {
     s.pop_layer();
     s.add_layer(
@@ -56,7 +94,7 @@ pub fn show_menu_start(s: &mut Cursive) {
     // );
 }
 
-// Game
+/// This starts the game given a BoardConfig (which decides game factors such as if it is in classic/zen mode)
 pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     s.pop_layer();
     // Soundtrack
@@ -67,7 +105,7 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     let layout = LinearLayout::vertical()
         .child(
             LinearLayout::horizontal()
-                .child(cursive::views::PaddedView::lrtb(
+                .child(PaddedView::lrtb(
                     1,
                     1,
                     1,
@@ -85,7 +123,7 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
                 ))
                 .child(Panel::new(NamedView::new("board", BoardView::new(config)))),
         )
-        .child(cursive::views::PaddedView::lrtb(
+        .child(PaddedView::lrtb(
             1,
             1,
             0,
@@ -102,7 +140,7 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     s.focus_name("board").unwrap();
 }
 
-// Commands
+/// Initialises setting commands by creating a callback for the colon key
 pub fn init_commands(s: &mut Cursive) {
     s.add_global_callback(':', |s| {
         let mut edit_view = EditView::new().on_submit(|s: &mut Cursive, command: &str| {
@@ -114,30 +152,26 @@ pub fn init_commands(s: &mut Cursive) {
                 s.call_on_name("board", |view: &mut BoardView| {
                     view.animation_explode()
                 });
-            }
-            else if command == "warp" {
-                 s.call_on_name("board", |view: &mut BoardView| {
+            } else if command == "warp" {
+                s.call_on_name("board", |view: &mut BoardView| {
                     view.animation_warp()
                 });
             }
             // Other debugging
             else if command == "autoplay" {
-                 s.call_on_name("board", |view: &mut BoardView| {
-                     view.autoplay = !view.autoplay;
+                s.call_on_name("board", |view: &mut BoardView| {
+                    view.autoplay = !view.autoplay;
                 });
-            }
-            else if command == "noanims" {
-                 s.call_on_name("board", |view: &mut BoardView| {
-                     view.animations_enabled = !view.animations_enabled;
+            } else if command == "noanims" {
+                s.call_on_name("board", |view: &mut BoardView| {
+                    view.animations_enabled = !view.animations_enabled;
                 });
-            }
-            else if command == "dbgstats" {
+            } else if command == "dbgstats" {
+                let debug_string = s.call_on_name("board", |view: &mut BoardView| {
+                    view.get_debug()
+                }).unwrap();
 
-                 let debug_string = s.call_on_name("board", |view: &mut BoardView| {
-                view.get_debug()
-                 }).unwrap();
-
-        s.add_layer(Dialog::info(&debug_string));
+                s.add_layer(Dialog::info(&debug_string));
             }
             // Going to the main menu
             else if command == "main" || command == "m" {
@@ -150,8 +184,7 @@ pub fn init_commands(s: &mut Cursive) {
                 || command == "p classic"
             {
                 show_game(s, BoardConfig::new_classic());
-            }
-            else if command == "play zen" || command == "p zen" {
+            } else if command == "play zen" || command == "p zen" {
                 show_game(s, BoardConfig::new_zen());
             }
             // Vim keys
@@ -164,8 +197,8 @@ pub fn init_commands(s: &mut Cursive) {
             } else if command == "h" || command == "hint" {
                 s.call_on_name("board", |view: &mut BoardView| view.hint());
             } else {
-            // In case nothing was recognized, display a help window.
-            s.add_layer(Dialog::info("Command not found. Available commands are main/m, play/p [classic/zen], q[a/!], hint/h"));
+                // In case nothing was recognized, display a help window.
+                s.add_layer(Dialog::info("Command not found. Available commands are main/m, play/p [classic/zen], q[a/!], hint/h"));
             }
         });
         edit_view.set_filler(" ");
@@ -173,8 +206,8 @@ pub fn init_commands(s: &mut Cursive) {
             Dialog::new().title("Command").content(OnEventView::new(LinearLayout::horizontal().child(TextView::new("> ")).child(edit_view.full_width())).on_event(Event::Key(cursive::event::Key::Esc), |s| {
                 s.pop_layer();
             }))
-                .with_name("command")
-                .fixed_width(32),
+                         .with_name("command")
+                         .fixed_width(32),
         );
     });
 }
