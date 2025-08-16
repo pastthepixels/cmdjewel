@@ -10,6 +10,33 @@ use cursive::views::{
 };
 use crate::multiline_button::Button;
 use cursive::Cursive;
+use crate::constants::strings;
+
+/// Creates a vertical spacer of size $size, or 1 by default
+macro_rules! spacer {
+    () => {
+        spacer!(1)
+    };
+
+    ($size:expr) => {
+        {
+            let n: usize = $size; // Force types to be unsigned integers
+            TextView::new("\n".repeat(n))
+        }
+    };
+}
+
+/// Creates a gamemode button for the main menu, that changes `about_gamemode` when focused.
+
+macro_rules! gamemode_btn {
+    ($label:expr, $desc:expr, $cb:expr) => {
+        FocusTracker::new(Button::new_raw("╭───────────╮\n│".to_string() + format!("{: ^11}", $label).as_str() + "│\n╰───────────╯", $cb)).on_focus(|_| {
+            EventResult::Consumed(Some(Callback::from_fn(|s| {
+                s.call_on_name("about_gamemode", |view: &mut TextView| view.set_content($desc));
+            })))
+        })
+    };
+}
 
 /// Shows the main menu, where gamemodes can be selected.
 /// It's a remake of a combination of Bejeweled 3's "Play" screen and its gamemode selector.
@@ -19,43 +46,26 @@ pub fn show_menu_main(s: &mut Cursive) {
     let module_player: &mut ModulePlayer = s.user_data().unwrap();
     module_player.module.set_pattern(0x02);
     // Creates a button list
-    let button_classic = FocusTracker::new(Button::new_raw("╭───────────╮\n│  Classic  │\n╰───────────╯", |s| {
+    let button_classic = gamemode_btn!(strings::CLASSIC, strings::CLASSIC_DESC, |s| {
         show_game(s, BoardConfig::new_classic());
-    })).on_focus(|_| {
-        EventResult::Consumed(Some(Callback::from_fn(|s| {
-            s.call_on_name("about_gamemode", |view: &mut TextView| view.set_content("A classic game of cmdjewel. Match 3 (or more) gems in a row until you run out of moves."));
-        })))
     });
-    let button_zen = FocusTracker::new(Button::new_raw("╭───────────╮\n│    Zen    │\n╰───────────╯", |s| {
+    let button_zen = gamemode_btn!(strings::ZEN, strings::ZEN_DESC, |s| {
         show_game(s, BoardConfig::new_zen());
-    }))
-    .on_focus(|_| {
-        EventResult::Consumed(Some(Callback::from_fn(|s| {
-            s.call_on_name("about_gamemode", |view: &mut TextView| {
-                view.set_content("Like Classic, but you can't run out of moves.")
-            });
-        })))
     });
     let buttons = LinearLayout::vertical()
         .child(button_classic)
-        .child(TextView::new("\n"))
+        .child(spacer!())
         .child(button_zen);
     // Adds buttons in the main menu, and a descriptor of game modes (when hovered)
     s.add_layer(
         LinearLayout::vertical()
             .child(TextView::new(
-                "
-               ,   .                _.
-  __  ,   ,  _.| __.  __  ,   ,  __  |
- /  ' |\\ /| /  |   | /__' | , | /__' |
- \\__, | ' | \\_,|   , \\__, \\/ \\/ \\__, ',_
-                 -'
-    ",
+                strings::CMDJEWEL_LOGO,
             ))
             .child(
                 Dialog::around(buttons)
-                    .title("main menu")
-                    .button("Quit", |s| s.quit())
+                    .title(strings::MAIN_MENU.to_lowercase())
+                    .button(strings::QUIT, |s| s.quit())
                     .padding(Margins::lrtb(0, 0, 1, 0)),
             )
             .child(Panel::new(PaddedView::lrtb(
@@ -63,7 +73,7 @@ pub fn show_menu_main(s: &mut Cursive) {
                 1,
                 0,
                 0,
-                NamedView::new("about_gamemode", TextView::new("Welcome to cmdjewel!\nUse the arrow keys and enter to move around.")),
+                NamedView::new("about_gamemode", TextView::new(strings::MSG_WELCOME)),
             ).min_height(3)))
             .max_width(40),
     );
@@ -76,16 +86,9 @@ pub fn show_menu_start(s: &mut Cursive) {
     s.add_layer(
         LinearLayout::vertical()
             .child(TextView::new(
-                "
-       ●   ◆   ⬟   ▼   ■   ⬢   ▲
-               ,   .                _.
-  __  ,   ,  _.| __.  __  ,   ,  __  |
- /  ' |\\ /| /  |   | /__' | , | /__' |
- \\__, | ' | \\_,|   , \\__, \\/ \\/ \\__, ',_
-                 -'
-    ",
+                strings::LOGO_GEMS.to_string() + strings::CMDJEWEL_LOGO,
             ))
-            .child(Button::new_raw("Play Game", show_menu_main)),
+            .child(Button::new_raw(strings::PLAY, show_menu_main)),
     );
 
     // s.reposition_layer(
@@ -111,15 +114,15 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
                     1,
                     1,
                     LinearLayout::vertical()
-                        .child(NamedView::new("level", TextView::new("Level X")))
-                        .child(NamedView::new("score", TextView::new("XXXXX")))
+                        .child(NamedView::new(strings::LEVEL.to_lowercase(), TextView::new(strings::LEVEL.to_string() + "X")))
+                        .child(NamedView::new(strings::SCORE.to_lowercase(), TextView::new("X")))
                         .child(TextView::new("\n")) // TODO: this is the worst way to do a margin wtf
-                        .child(Button::new("Hint", |s| {
+                        .child(Button::new(strings::HINT, |s| {
                             s.call_on_name("board", |view: &mut BoardView| view.hint());
                             // Highlights the game window
                             s.focus_name("board").expect("could not focus");
                         }))
-                        .child(LinearLayout::vertical().child(Button::new("Quit", show_menu_main))),
+                        .child(LinearLayout::vertical().child(Button::new(strings::QUIT, show_menu_main))),
                 ))
                 .child(Panel::new(NamedView::new("board", BoardView::new(config)))),
         )
@@ -198,12 +201,12 @@ pub fn init_commands(s: &mut Cursive) {
                 s.call_on_name("board", |view: &mut BoardView| view.hint());
             } else {
                 // In case nothing was recognized, display a help window.
-                s.add_layer(Dialog::info("Command not found. Available commands are main/m, play/p [classic/zen], q[a/!], hint/h"));
+                s.add_layer(Dialog::info(strings::CMD_NOT_FOUND));
             }
         });
         edit_view.set_filler(" ");
         s.add_layer(
-            Dialog::new().title("Command").content(OnEventView::new(LinearLayout::horizontal().child(TextView::new("> ")).child(edit_view.full_width())).on_event(Event::Key(cursive::event::Key::Esc), |s| {
+            Dialog::new().title(strings::COMMAND).content(OnEventView::new(LinearLayout::horizontal().child(TextView::new("> ")).child(edit_view.full_width())).on_event(Event::Key(cursive::event::Key::Esc), |s| {
                 s.pop_layer();
             }))
                          .with_name("command")

@@ -4,6 +4,7 @@ mod music;
 mod ui;
 mod view;
 mod multiline_button;
+mod constants;
 
 use cursive::traits::With;
 
