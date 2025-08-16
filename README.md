@@ -23,10 +23,10 @@ If you notice everything's too small, try changing your terminal's font size. Th
 - [ ] Music/SFX slider
 - [ ] Settings page accessible in-game/main menu
 - [ ] Saving/loading from config files (TOML probably somewhere in ~/.config)
-- [ ] Better title screen logo
+- [X] Better title screen logo
 - [ ] Animated title screen background
 - [ ] Animation from moving from the title screen to main menu
-- [ ] Main menu resembling Bejeweled 3
+- [X] Main menu resembling Bejeweled 3
 - [ ] Sound effects
 - [ ] Special gems that explode hypercubes activate those hypercubes
 - [x] Hypercube with hypercube matching
