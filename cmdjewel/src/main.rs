@@ -1,5 +1,4 @@
 mod animations;
-mod game;
 mod music;
 mod ui;
 mod view;

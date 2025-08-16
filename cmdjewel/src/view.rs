@@ -1,7 +1,9 @@
 use crate::animations::AnimationView;
-use crate::game::{self};
-use crate::game::{Board, BoardConfig};
 use crate::ui;
+use cmdjewel_core::board::{Board, BoardConfig};
+use cmdjewel_core::gems::{Gem, GemColor};
+use cmdjewel_core::point;
+use cmdjewel_core::point::Point;
 use cursive::direction::Direction;
 use cursive::event::{Event, EventResult};
 use cursive::theme::{Color, ColorStyle};
@@ -25,7 +27,7 @@ pub enum AnimationType {
 }
 
 pub struct Animation {
-    pub point: game::Point<usize>,
+    pub point: Point<usize>,
     pub duration: u8,
     pub animation_type: AnimationType,
 }
@@ -79,7 +81,7 @@ impl BoardView {
     // Explodes the board
     pub fn animation_explode(&mut self) {
         self.animations.push(Animation {
-            point: game::Point(0, 0),
+            point: Point(0, 0),
             duration: 10,
             animation_type: AnimationType::Explosion,
         });
@@ -88,13 +90,13 @@ impl BoardView {
     // Initiates the warp animation
     pub fn animation_warp(&mut self) {
         self.animations.push(Animation {
-            point: game::Point(0, 0),
+            point: Point(0, 0),
             duration: 2,
             animation_type: AnimationType::Warp,
         });
     }
 
-    fn attempt_swap(&mut self, direction: game::Direction) {
+    fn attempt_swap(&mut self, direction: point::Direction) {
         if self.board.is_valid_move(self.board.get_cursor(), direction) {
             self.board.swap(direction);
         }
@@ -116,7 +118,7 @@ impl BoardView {
     fn create_animations(&mut self) {
         // Highlight all matching gems
         if self.board.is_full() {
-            let mut points: Vec<game::Point<usize>> = Vec::new();
+            let mut points: Vec<Point<usize>> = Vec::new();
             self.board
                 .get_matching_gems()
                 .into_iter()
@@ -151,15 +153,15 @@ impl BoardView {
         self.board.update_level();
         if self.autoplay && self.board.is_full() {
             self.hint();
-            self.attempt_swap(game::Direction::Left);
-            self.attempt_swap(game::Direction::Right);
-            self.attempt_swap(game::Direction::Up);
-            self.attempt_swap(game::Direction::Down);
+            self.attempt_swap(point::Direction::Left);
+            self.attempt_swap(point::Direction::Right);
+            self.attempt_swap(point::Direction::Up);
+            self.attempt_swap(point::Direction::Down);
         }
     }
 
     /// Moves the cursor by 1 in any direction and returns an EventResult.
-    fn move_cursor(&mut self, direction: game::Direction) -> EventResult {
+    fn move_cursor(&mut self, direction: point::Direction) -> EventResult {
         match self.cursor_mode {
             CursorMode::Swap => {
                 self.attempt_swap(direction);
@@ -167,12 +169,12 @@ impl BoardView {
             }
             CursorMode::Normal => {
                 let cursor_valid = match direction {
-                    game::Direction::Left => self.board.get_cursor().0 != 0,
-                    game::Direction::Right => {
+                    point::Direction::Left => self.board.get_cursor().0 != 0,
+                    point::Direction::Right => {
                         self.board.get_cursor().0 != self.board.get_width() - 1
                     }
-                    game::Direction::Up => self.board.get_cursor().1 != 0,
-                    game::Direction::Down => {
+                    point::Direction::Up => self.board.get_cursor().1 != 0,
+                    point::Direction::Down => {
                         self.board.get_cursor().1 != self.board.get_width() - 1
                     }
                 };
@@ -189,73 +191,57 @@ impl BoardView {
     // Generics
 
     /// Gets a printable string from a game::Gems.
-    /// This doesn't belong in game.rs as that file only contains game logic and nothing user-facing.
-    pub fn gem_string(gem: game::Gem) -> String {
+    /// This doesn't belong in board as that file only contains game logic and nothing user-facing.
+    pub fn gem_string(gem: Gem) -> String {
         match gem {
-            game::Gem::Empty => "•",
-            game::Gem::Normal(x) => match x {
-                game::GemColor::Blue => "▼",
-                game::GemColor::White => "●",
-                game::GemColor::Red => "■",
-                game::GemColor::Yellow => "◆",
-                game::GemColor::Green => "⬟",
-                game::GemColor::Orange => "⬢",
-                game::GemColor::Purple => "▲",
+            Gem::Empty => "•",
+            Gem::Normal(x) => match x {
+                GemColor::Blue => "▼",
+                GemColor::White => "●",
+                GemColor::Red => "■",
+                GemColor::Yellow => "◆",
+                GemColor::Green => "⬟",
+                GemColor::Orange => "⬢",
+                GemColor::Purple => "▲",
             },
-            game::Gem::Flame(x) => match x {
-                game::GemColor::Blue => "▽",
-                game::GemColor::White => "○",
-                game::GemColor::Red => "□",
-                game::GemColor::Yellow => "◇",
-                game::GemColor::Green => "⬠",
-                game::GemColor::Orange => "⬡",
-                game::GemColor::Purple => "△",
+            Gem::Flame(x) => match x {
+                GemColor::Blue => "▽",
+                GemColor::White => "○",
+                GemColor::Red => "□",
+                GemColor::Yellow => "◇",
+                GemColor::Green => "⬠",
+                GemColor::Orange => "⬡",
+                GemColor::Purple => "△",
             },
-            game::Gem::Star(_) => "★",
-            game::Gem::Supernova(_) => "☆",
-            game::Gem::Hypercube(_) => "◩",
+            Gem::Star(_) => "★",
+            Gem::Supernova(_) => "☆",
+            Gem::Hypercube(_) => "◩",
         }
         .into()
     }
 
     /// Gets a ColorStyle given a game::Gems
-    pub fn gem_color(gem: game::Gem) -> ColorStyle {
+    pub fn gem_color(gem: Gem) -> ColorStyle {
         match gem {
-            game::Gem::Empty => ColorStyle::new(Color::Rgb(67, 76, 94), Color::Rgb(46, 52, 64)),
-            game::Gem::Normal(x) => BoardView::colorstyle_from_gemcolor(x),
-            game::Gem::Flame(x) => BoardView::colorstyle_from_gemcolor(x),
-            game::Gem::Star(x) => BoardView::colorstyle_from_gemcolor(x),
-            game::Gem::Supernova(x) => BoardView::colorstyle_from_gemcolor(x),
-            game::Gem::Hypercube(_) => {
-                ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(67, 76, 94))
-            }
+            Gem::Empty => ColorStyle::new(Color::Rgb(67, 76, 94), Color::Rgb(46, 52, 64)),
+            Gem::Normal(x) => BoardView::colorstyle_from_gemcolor(x),
+            Gem::Flame(x) => BoardView::colorstyle_from_gemcolor(x),
+            Gem::Star(x) => BoardView::colorstyle_from_gemcolor(x),
+            Gem::Supernova(x) => BoardView::colorstyle_from_gemcolor(x),
+            Gem::Hypercube(_) => ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(67, 76, 94)),
         }
     }
 
     /// Returns a ColorStyle from a game::GemColor
-    fn colorstyle_from_gemcolor(gem_color: game::GemColor) -> ColorStyle {
+    fn colorstyle_from_gemcolor(gem_color: GemColor) -> ColorStyle {
         match gem_color {
-            game::GemColor::Blue => {
-                ColorStyle::new(Color::Rgb(126, 158, 189), Color::Rgb(46, 52, 64))
-            }
-            game::GemColor::White => {
-                ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64))
-            }
-            game::GemColor::Red => {
-                ColorStyle::new(Color::Rgb(190, 96, 105), Color::Rgb(46, 52, 64))
-            }
-            game::GemColor::Yellow => {
-                ColorStyle::new(Color::Rgb(233, 201, 138), Color::Rgb(46, 52, 64))
-            }
-            game::GemColor::Green => {
-                ColorStyle::new(Color::Rgb(162, 188, 139), Color::Rgb(46, 52, 64))
-            }
-            game::GemColor::Orange => {
-                ColorStyle::new(Color::Rgb(207, 135, 111), Color::Rgb(46, 52, 64))
-            }
-            game::GemColor::Purple => {
-                ColorStyle::new(Color::Rgb(174, 174, 255), Color::Rgb(46, 52, 64))
-            }
+            GemColor::Blue => ColorStyle::new(Color::Rgb(126, 158, 189), Color::Rgb(46, 52, 64)),
+            GemColor::White => ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64)),
+            GemColor::Red => ColorStyle::new(Color::Rgb(190, 96, 105), Color::Rgb(46, 52, 64)),
+            GemColor::Yellow => ColorStyle::new(Color::Rgb(233, 201, 138), Color::Rgb(46, 52, 64)),
+            GemColor::Green => ColorStyle::new(Color::Rgb(162, 188, 139), Color::Rgb(46, 52, 64)),
+            GemColor::Orange => ColorStyle::new(Color::Rgb(207, 135, 111), Color::Rgb(46, 52, 64)),
+            GemColor::Purple => ColorStyle::new(Color::Rgb(174, 174, 255), Color::Rgb(46, 52, 64)),
         }
     }
 }
@@ -299,8 +285,8 @@ impl cursive::view::View for BoardView {
         }
     }
 
-    fn take_focus(&mut self, _: Direction) -> Result<EventResult, CannotFocus> {
-        Ok(EventResult::Consumed(None))
+    fn required_size(&mut self, _: Vec2) -> Vec2 {
+        (self.board.get_width() * 3, self.board.get_width()).into()
     }
 
     fn on_event(&mut self, event: Event) -> EventResult {
@@ -413,18 +399,18 @@ impl cursive::view::View for BoardView {
                     EventResult::consumed()
                 }
                 ':' => EventResult::Ignored,
-                'h' => self.move_cursor(game::Direction::Left),
-                'l' => self.move_cursor(game::Direction::Right),
-                'k' => self.move_cursor(game::Direction::Up),
-                'j' => self.move_cursor(game::Direction::Down),
+                'h' => self.move_cursor(point::Direction::Left),
+                'l' => self.move_cursor(point::Direction::Right),
+                'k' => self.move_cursor(point::Direction::Up),
+                'j' => self.move_cursor(point::Direction::Down),
                 _ => EventResult::with_cb(move |s| {
                     s.add_layer(Dialog::info("Key not recognized. Use the arrow keys to move and the enter key to enter SWAP mode."));
                 }),
             },
-            Event::Key(cursive::event::Key::Left) => self.move_cursor(game::Direction::Left),
-            Event::Key(cursive::event::Key::Right) => self.move_cursor(game::Direction::Right),
-            Event::Key(cursive::event::Key::Up) => self.move_cursor(game::Direction::Up),
-            Event::Key(cursive::event::Key::Down) => self.move_cursor(game::Direction::Down),
+            Event::Key(cursive::event::Key::Left) => self.move_cursor(point::Direction::Left),
+            Event::Key(cursive::event::Key::Right) => self.move_cursor(point::Direction::Right),
+            Event::Key(cursive::event::Key::Up) => self.move_cursor(point::Direction::Up),
+            Event::Key(cursive::event::Key::Down) => self.move_cursor(point::Direction::Down),
             Event::Key(cursive::event::Key::Enter) => {
                 if let CursorMode::Normal = self.cursor_mode {
                     self.cursor_mode = CursorMode::Swap
@@ -437,7 +423,7 @@ impl cursive::view::View for BoardView {
         }
     }
 
-    fn required_size(&mut self, _: Vec2) -> Vec2 {
-        (self.board.get_width() * 3, self.board.get_width()).into()
+    fn take_focus(&mut self, _: Direction) -> Result<EventResult, CannotFocus> {
+        Ok(EventResult::Consumed(None))
     }
 }

@@ -1,5 +1,5 @@
-use crate::game::Gem;
-use crate::game::Point;
+use cmdjewel_core::gems::Gem;
+use cmdjewel_core::point::Point;
 use crate::view::BoardView;
 use cursive::event::Event;
 use cursive::event::EventResult;
@@ -126,11 +126,11 @@ impl Explosion {
     /// Creates a new explosion animation.
     /// Requires the number of gems on a board, and the force of the explosion.
     pub fn new(num_gems: usize, force: f32) -> Self {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         Explosion {
             keyframe: 0,
             velocities: (0..num_gems)
-                .map(|_| (rng.gen_range(-force..force), rng.gen_range(-force..force)))
+                .map(|_| (rng.random_range(-force..force), rng.random_range(-force..force)))
                 .collect(),
             positions: Self::calculate_positions(num_gems),
         }
@@ -193,11 +193,11 @@ impl Warp {
     /// Creates a new explosion animation.
     /// Requires the number of gems on a board, and the force of the explosion.
     pub fn new(num_gems: usize, force: f32) -> Self {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         Warp {
             keyframe: 0,
             velocities: (0..num_gems)
-                .map(|_| Point(rng.gen_range(-force..force), rng.gen_range(-force..force)))
+                .map(|_| Point(rng.random_range(-force..force), rng.random_range(-force..force)))
                 .collect(),
             positions: Self::calculate_positions(num_gems),
             circles: Vec::new(),
@@ -283,8 +283,8 @@ impl Animation for Warp {
             .map(|circle| (circle.0 + 1, circle.1))
             .collect();
         if self.keyframe % 15 == 0 && (self.get_max_keyframe() - self.keyframe) > WARP_KEYFRAMES {
-            let mut rng = rand::thread_rng();
-            let color = match rng.gen_range(0..8) {
+            let mut rng = rand::rng();
+            let color = match rng.random_range(0..8) {
                 1 => Color::Rgb(126, 158, 189),
                 2 => Color::Rgb(213, 219, 230),
                 3 => Color::Rgb(190, 96, 105),

@@ -1,16 +1,15 @@
-use crate::game::BoardConfig;
 use crate::music::ModulePlayer;
-// Handles game UI.
+use cmdjewel_core::board::BoardConfig;
+use crate::constants::strings;
+use crate::multiline_button::Button;
 use crate::view::BoardView;
 use cursive::event::{Callback, Event, EventResult};
 use cursive::view::{Margins, Nameable, Resizable};
 use cursive::views::{
-    Dialog, EditView, FocusTracker, LinearLayout, NamedView, OnEventView, PaddedView,
-    Panel, ProgressBar, TextView,
+    Dialog, EditView, FocusTracker, LinearLayout, NamedView, OnEventView, PaddedView, Panel,
+    ProgressBar, TextView,
 };
-use crate::multiline_button::Button;
 use cursive::Cursive;
-use crate::constants::strings;
 
 /// Creates a vertical spacer of size $size, or 1 by default
 macro_rules! spacer {
@@ -18,20 +17,26 @@ macro_rules! spacer {
         spacer!(1)
     };
 
-    ($size:expr) => {
-        {
-            let n: usize = $size; // Force types to be unsigned integers
-            TextView::new("\n".repeat(n))
-        }
-    };
+    ($size:expr) => {{
+        let n: usize = $size; // Force types to be unsigned integers
+        TextView::new("\n".repeat(n))
+    }};
 }
 
 /// Creates a gamemode button for the main menu, that changes `about_gamemode` when focused.
 macro_rules! gamemode_btn {
     ($label:expr, $desc:expr, $cb:expr) => {
-        FocusTracker::new(Button::new_raw("╭───────────╮\n│".to_string() + format!("{: ^11}", $label).as_str() + "│\n╰───────────╯", $cb)).on_focus(|_| {
+        FocusTracker::new(Button::new_raw(
+            "╭───────────╮\n│".to_string()
+                + format!("{: ^11}", $label).as_str()
+                + "│\n╰───────────╯",
+            $cb,
+        ))
+        .on_focus(|_| {
             EventResult::Consumed(Some(Callback::from_fn(|s| {
-                s.call_on_name("about_gamemode", |view: &mut TextView| view.set_content($desc));
+                s.call_on_name("about_gamemode", |view: &mut TextView| {
+                    view.set_content($desc)
+                });
             })))
         })
     };
@@ -58,22 +63,23 @@ pub fn show_menu_main(s: &mut Cursive) {
     // Adds buttons in the main menu, and a descriptor of game modes (when hovered)
     s.add_layer(
         LinearLayout::vertical()
-            .child(TextView::new(
-                strings::CMDJEWEL_LOGO,
-            ))
+            .child(TextView::new(strings::CMDJEWEL_LOGO))
             .child(
                 Dialog::around(buttons)
                     .title(strings::MAIN_MENU.to_lowercase())
                     .button(strings::QUIT, |s| s.quit())
                     .padding(Margins::lrtb(0, 0, 1, 0)),
             )
-            .child(Panel::new(PaddedView::lrtb(
-                1,
-                1,
-                0,
-                0,
-                NamedView::new("about_gamemode", TextView::new(strings::MSG_WELCOME)),
-            ).min_height(3)))
+            .child(Panel::new(
+                PaddedView::lrtb(
+                    1,
+                    1,
+                    0,
+                    0,
+                    NamedView::new("about_gamemode", TextView::new(strings::MSG_WELCOME)),
+                )
+                .min_height(3),
+            ))
             .max_width(40),
     );
 }
@@ -113,15 +119,24 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
                     1,
                     1,
                     LinearLayout::vertical()
-                        .child(NamedView::new(strings::LEVEL.to_lowercase(), TextView::new(strings::LEVEL.to_string() + "X")))
-                        .child(NamedView::new(strings::SCORE.to_lowercase(), TextView::new("X")))
+                        .child(NamedView::new(
+                            strings::LEVEL.to_lowercase(),
+                            TextView::new(strings::LEVEL.to_string() + "X"),
+                        ))
+                        .child(NamedView::new(
+                            strings::SCORE.to_lowercase(),
+                            TextView::new("X"),
+                        ))
                         .child(TextView::new("\n")) // TODO: this is the worst way to do a margin wtf
                         .child(Button::new(strings::HINT, |s| {
                             s.call_on_name("board", |view: &mut BoardView| view.hint());
                             // Highlights the game window
                             s.focus_name("board").expect("could not focus");
                         }))
-                        .child(LinearLayout::vertical().child(Button::new(strings::QUIT, show_menu_main))),
+                        .child(
+                            LinearLayout::vertical()
+                                .child(Button::new(strings::QUIT, show_menu_main)),
+                        ),
                 ))
                 .child(Panel::new(NamedView::new("board", BoardView::new(config)))),
         )
@@ -151,13 +166,9 @@ pub fn init_commands(s: &mut Cursive) {
             s.pop_layer();
             // Animation debugging
             if command == "explode" {
-                s.call_on_name("board", |view: &mut BoardView| {
-                    view.animation_explode()
-                });
+                s.call_on_name("board", |view: &mut BoardView| view.animation_explode());
             } else if command == "warp" {
-                s.call_on_name("board", |view: &mut BoardView| {
-                    view.animation_warp()
-                });
+                s.call_on_name("board", |view: &mut BoardView| view.animation_warp());
             }
             // Other debugging
             else if command == "autoplay" {
@@ -169,9 +180,9 @@ pub fn init_commands(s: &mut Cursive) {
                     view.animations_enabled = !view.animations_enabled;
                 });
             } else if command == "dbgstats" {
-                let debug_string = s.call_on_name("board", |view: &mut BoardView| {
-                    view.get_debug()
-                }).unwrap();
+                let debug_string = s
+                    .call_on_name("board", |view: &mut BoardView| view.get_debug())
+                    .unwrap();
 
                 s.add_layer(Dialog::info(&debug_string));
             }
@@ -193,17 +204,12 @@ pub fn init_commands(s: &mut Cursive) {
             else if command == "mpause" {
                 let module_player: &mut ModulePlayer = s.user_data().unwrap();
                 module_player.pause();
-            }
-            else if command == "mplay" {
+            } else if command == "mplay" {
                 let module_player: &mut ModulePlayer = s.user_data().unwrap();
                 module_player.play();
             }
             // Vim keys
-            else if command == "q"
-                || command == "qa"
-                || command == "q!"
-                || command == "qa!"
-            {
+            else if command == "q" || command == "qa" || command == "q!" || command == "qa!" {
                 s.quit();
             } else if command == "h" || command == "hint" {
                 s.call_on_name("board", |view: &mut BoardView| view.hint());
@@ -214,11 +220,20 @@ pub fn init_commands(s: &mut Cursive) {
         });
         edit_view.set_filler(" ");
         s.add_layer(
-            Dialog::new().title(strings::COMMAND).content(OnEventView::new(LinearLayout::horizontal().child(TextView::new("> ")).child(edit_view.full_width())).on_event(Event::Key(cursive::event::Key::Esc), |s| {
-                s.pop_layer();
-            }))
-                         .with_name("command")
-                         .fixed_width(32),
+            Dialog::new()
+                .title(strings::COMMAND)
+                .content(
+                    OnEventView::new(
+                        LinearLayout::horizontal()
+                            .child(TextView::new("> "))
+                            .child(edit_view.full_width()),
+                    )
+                    .on_event(Event::Key(cursive::event::Key::Esc), |s| {
+                        s.pop_layer();
+                    }),
+                )
+                .with_name("command")
+                .fixed_width(32),
         );
     });
 }

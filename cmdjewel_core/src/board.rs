@@ -1,160 +1,12 @@
 // Handles game logic.
-// TODO: remove the below line once the implementation is complete.
-#![allow(dead_code, unused_variables)]
 
-use std::ops::{Add, Sub};
+use rand::seq::SliceRandom;
 
-use rand::{
-    distributions::{Distribution, Standard},
-    seq::SliceRandom,
-    Rng,
-};
+use crate::point::{Point, Direction};
 
-// Specifies how much points you get for each gem successfully swapped.
-const POINTS_SWAP: u8 = 30;
+use crate::constants::*;
 
-// Specifies how much a swap counts toward progressing through each level, for each gem successfully swapped.
-const PROGRESS_SWAP_INITIAL: f32 = 0.025;
-const PROGRESS_SWAP_FALLOFF: f32 = 0.9; // PROGRESS_SWAP_INITIAL gets multiplied by this for each level
-const PROGRESS_SWAP_MIN: f32 = 0.001;
-
-/// Types of gems to use.
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum Gem {
-    Empty,
-    // Normal gems.
-    Normal(GemColor),
-    // Flame gems.
-    Flame(GemColor),
-    // Star gems.
-    Star(GemColor),
-    // Suprnova gems.
-    Supernova(GemColor),
-    // Hypercube
-    Hypercube(GemSelector),
-}
-
-/// Gem colors. These are not associated with any special abilities nor do they include special gems (e.g. hypercubes)
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum GemColor {
-    Blue,
-    White,
-    Red,
-    Yellow,
-    Green,
-    Orange,
-    Purple,
-}
-
-/// Enum for different (general) ways of selecting gems on a board.
-/// I mean I could also like add something with a vec of points if I want I guess
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum GemSelector {
-    Color(GemColor),
-    All,
-    None,
-}
-
-impl Distribution<Gem> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Gem {
-        Gem::Normal(match rng.gen_range(0..=6) {
-            0 => GemColor::Blue,
-            1 => GemColor::White,
-            2 => GemColor::Red,
-            3 => GemColor::Yellow,
-            4 => GemColor::Green,
-            5 => GemColor::Orange,
-            _ => GemColor::Purple,
-        })
-    }
-}
-
-/// Specifies a 2D x,y point
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct Point<T>(pub T, pub T)
-where
-    T: Add<Output = T> + Sub<Output = T> + PartialEq;
-
-impl<T> std::ops::Add<Point<T>> for Point<T>
-where
-    T: Add<Output = T> + Sub<Output = T> + PartialEq,
-{
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Point(self.0 + rhs.0, self.1 + rhs.1)
-    }
-}
-
-impl<T> std::ops::Sub<Point<T>> for Point<T>
-where
-    T: Add<Output = T> + Sub<Output = T> + PartialEq,
-{
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Point(self.0 - rhs.0, self.1 - rhs.1)
-    }
-}
-
-impl<T> Point<T>
-where
-    T: Add<Output = T> + Sub<Output = T> + PartialEq,
-{
-    pub fn distance_to(from: Point<f32>, to: Point<f32>) -> f32 {
-        let difference = to - from;
-        f32::sqrt(difference.0.powi(2) + difference.1.powi(2))
-    }
-    // Gets a list of all adjacent points for a usize point
-    pub fn get_adjacent_usize(point: Point<usize>) -> Vec<Point<usize>> {
-        let mut points_valid: Vec<Point<usize>> = Vec::new();
-        let point = Point(point.0 as i32, point.1 as i32);
-        [
-            Point(point.0, point.1 + 1),
-            Point(point.0, point.1 - 1),
-            Point(point.0 + 1, point.1),
-            Point(point.0 + 1, point.1 + 1),
-            Point(point.0 + 1, point.1 - 1),
-            Point(point.0 - 1, point.1),
-            Point(point.0 - 1, point.1 + 1),
-            Point(point.0 - 1, point.1 - 1),
-        ]
-        .iter()
-        .for_each(|adjacent| {
-            if adjacent.0 >= 0 && adjacent.1 >= 0 {
-                points_valid.push(Point(adjacent.0 as usize, adjacent.1 as usize));
-            }
-        });
-        points_valid
-    }
-    // Gets a list of all points that touch a point to one edge for a usize point
-    pub fn get_edge_usize(point: Point<usize>) -> Vec<Point<usize>> {
-        let mut points_valid: Vec<Point<usize>> = Vec::new();
-        let point = Point(point.0 as i32, point.1 as i32);
-        [
-            Point(point.0, point.1 + 1),
-            Point(point.0, point.1 - 1),
-            Point(point.0 + 1, point.1),
-            Point(point.0 - 1, point.1),
-        ]
-        .iter()
-        .for_each(|adjacent| {
-            if adjacent.0 >= 0 && adjacent.1 >= 0 {
-                points_valid.push(Point(adjacent.0 as usize, adjacent.1 as usize));
-            }
-        });
-        points_valid
-    }
-}
-
-/// Specifies adjacent directions
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum Direction {
-    Left,
-    Right,
-    Up,
-    Down,
-}
+use crate::gems::*;
 
 /// Configuring cmdjewel boards (for different gamemodes)
 pub struct BoardConfig {
@@ -230,7 +82,7 @@ impl Board {
         self.level_progress.min(1.0)
     }
 
-    /// Every time a gem is swapped, points are added, and the gem contributes some amount to progessing though a level.
+    /// Every time a gem is swapped, points are added, and the gem contributes some amount to making progress though a level.
     /// This function returns that amount based on the current level.
     pub fn get_swap_progress(&self) -> f32 {
         (PROGRESS_SWAP_INITIAL * PROGRESS_SWAP_FALLOFF.powi(self.level as i32))
@@ -400,7 +252,7 @@ impl Board {
         self.data.swap(destination_index, source_index);
     }
 
-    /// Returns true if a point [x,y] is in a the board.
+    /// Returns true if a point [x,y] is in the board.
     pub fn is_in_board(&self, point: Point<usize>) -> bool {
         point.1 < self.get_width() && point.0 < self.get_width()
     }
@@ -471,7 +323,7 @@ impl Board {
     /// Given a special gem, returns all the gems it is to remove (including itself)
     /// If the gem specified by the index is not a special gem, the returning vector will be empty.
     /// index: The index of the special gem in self.data.
-    /// need_matching: Whether the gem needs to be matching with other gems to be activated - set this to false to force the gem to be activated.
+    /// need_matching: Whether the gem needs to be matching with other gems to be activated - set this to false in order to force the gem to be activated.
     pub fn activate_special_gem(&self, index: usize, need_matching: bool) -> Vec<Point<usize>> {
         let point = self.index_to_point(index);
         let mut to_remove: Vec<Point<usize>> = Vec::new();
@@ -494,7 +346,7 @@ impl Board {
                 }
                 GemSelector::None => {}
             },
-            Gem::Flame(color) => {
+            Gem::Flame(_) => {
                 if !need_matching || self.is_matching_gem(self.data.as_ref(), point) {
                     // Add the flame gem to the list of matching gems...
                     to_remove.push(point);
@@ -603,7 +455,7 @@ impl Board {
 
     /// Returns true if you can make a move on a spot.
     pub fn is_valid_gem(&self, point: Point<usize>) -> bool {
-        // If we swapped the piece, would we swap it outside of the board? Check each direction to make sure you even *can* swap the piece.
+        // If we swapped the piece, would we swap it outside the board? Check each direction to make sure you even *can* swap the piece.
         // also: Hypercubes can be matched with anything!
         if let Gem::Hypercube(_) = self.data[self.point_to_index(point)] {
             true
@@ -724,7 +576,7 @@ impl Board {
         self.cursor
     }
 
-    /// Returns a reference to self.data
+    /// Returns a reference to `self.data`
     pub fn as_ref(&self) -> &[Gem] {
         self.data.as_ref()
     }
