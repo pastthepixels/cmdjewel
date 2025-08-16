@@ -112,4 +112,10 @@ impl ModulePlayer {
             stream.play().unwrap();
         }
     }
+    
+    pub fn pause(&mut self) {
+        if let Some(stream) = &mut self.stream {
+            stream.pause().unwrap();
+        }
+    }
 }

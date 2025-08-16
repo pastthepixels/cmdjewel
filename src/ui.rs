@@ -27,7 +27,6 @@ macro_rules! spacer {
 }
 
 /// Creates a gamemode button for the main menu, that changes `about_gamemode` when focused.
-
 macro_rules! gamemode_btn {
     ($label:expr, $desc:expr, $cb:expr) => {
         FocusTracker::new(Button::new_raw("╭───────────╮\n│".to_string() + format!("{: ^11}", $label).as_str() + "│\n╰───────────╯", $cb)).on_focus(|_| {
@@ -189,6 +188,15 @@ pub fn init_commands(s: &mut Cursive) {
                 show_game(s, BoardConfig::new_classic());
             } else if command == "play zen" || command == "p zen" {
                 show_game(s, BoardConfig::new_zen());
+            }
+            // Sound controls
+            else if command == "mpause" {
+                let module_player: &mut ModulePlayer = s.user_data().unwrap();
+                module_player.pause();
+            }
+            else if command == "mplay" {
+                let module_player: &mut ModulePlayer = s.user_data().unwrap();
+                module_player.play();
             }
             // Vim keys
             else if command == "q"
