@@ -6,6 +6,6 @@ edition = "2021"
 [dependencies]
 cpal = "0.16.0"
 cursive = "0.21.1"
-openmpt_sys = { git = "https://codeberg.org/pastthepixels/openmpt-sys", rev = "f9b516fb802a2b359d3b2cef5c8233db5befa023" }
+openmpt_sys = { git = "https://codeberg.org/pastthepixels/openmpt-sys", rev = "e1ef8b9861d1fbcd472ec78434d5c32baab89b77" }
 rand = "0.9.2"
 cmdjewel_core = { path = "../cmdjewel_core" }
