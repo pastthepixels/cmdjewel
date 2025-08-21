@@ -38,4 +38,6 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         name: cmdjewel-${{ matrix.os }}
-        path: target/release/cmdjewel
+        path: |
+          target/release/cmdjewel
+          target/release/cmdjewel.exe
