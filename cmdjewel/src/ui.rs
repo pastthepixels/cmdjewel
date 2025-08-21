@@ -1,4 +1,5 @@
-use crate::music::ModulePlayer;
+use cpal::Stream;
+use cpal::traits::StreamTrait;
 use cmdjewel_core::board::BoardConfig;
 use crate::constants::strings;
 use crate::multiline_button::Button;
@@ -47,8 +48,7 @@ macro_rules! gamemode_btn {
 pub fn show_menu_main(s: &mut Cursive) {
     s.pop_layer();
     // Soundtrack
-    let module_player: &mut ModulePlayer = s.user_data().unwrap();
-    module_player.module.set_pattern(0x02);
+    it2play_rs::play(0x02);
     // Creates a button list
     let button_classic = gamemode_btn!(strings::CLASSIC, strings::CLASSIC_DESC, |s| {
         show_game(s, BoardConfig::new_classic());
@@ -106,8 +106,7 @@ pub fn show_menu_start(s: &mut Cursive) {
 pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     s.pop_layer();
     // Soundtrack
-    let module_player: &mut ModulePlayer = s.user_data().unwrap();
-    module_player.module.set_pattern(0x0D); // B0D
+    it2play_rs::play(0x0D);
     let name = config.name.clone();
     // Creates the layout for the dialog
     let layout = LinearLayout::vertical()
@@ -202,11 +201,11 @@ pub fn init_commands(s: &mut Cursive) {
             }
             // Sound controls
             else if command == "mpause" {
-                let module_player: &mut ModulePlayer = s.user_data().unwrap();
-                module_player.pause();
+                let stream: &mut Stream = s.user_data().unwrap();
+                stream.pause().unwrap();
             } else if command == "mplay" {
-                let module_player: &mut ModulePlayer = s.user_data().unwrap();
-                module_player.play();
+                let stream: &mut Stream = s.user_data().unwrap();
+                stream.play().unwrap();
             }
             // Vim keys
             else if command == "q" || command == "qa" || command == "q!" || command == "qa!" {

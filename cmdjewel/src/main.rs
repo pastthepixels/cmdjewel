@@ -1,10 +1,11 @@
 mod animations;
-mod music;
 mod ui;
 mod view;
 mod multiline_button;
 mod constants;
 
+use std::thread;
+use cpal::traits::StreamTrait;
 use cursive::traits::With;
 
 fn main() {
@@ -41,11 +42,11 @@ fn main() {
     // as a command to change the background.
     println!("\x1b]11;#2E3440\x07");
     // set up music
-    let mut module_player =
-        music::ModulePlayer::from_bytes(Vec::from(include_bytes!("../cmdjewel.it")));
-    module_player.generate_stream();
-    module_player.play();
-    siv.set_user_data(module_player);
+    it2play_rs::load_bytes(Vec::from(include_bytes!("../cmdjewel.it")), it2play_rs::IT2Driver::HQ);
+    let stream = it2play_rs::generate_stream();
+    stream.play().unwrap();
+    it2play_rs::play(0);
+    siv.set_user_data(stream);
     // show the start screen
     ui::show_menu_start(&mut siv);
     // set up commands
