@@ -178,13 +178,7 @@ pub fn init_commands(s: &mut Cursive) {
                 s.call_on_name("board", |view: &mut BoardView| {
                     view.animations_enabled = !view.animations_enabled;
                 });
-            } else if command == "dbgstats" {
-                let debug_string = s
-                    .call_on_name("board", |view: &mut BoardView| view.get_debug())
-                    .unwrap();
-
-                s.add_layer(Dialog::info(&debug_string));
-            }
+            } 
             // Going to the main menu
             else if command == "main" || command == "m" {
                 show_menu_main(s);

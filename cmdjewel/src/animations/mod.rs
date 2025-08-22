@@ -4,11 +4,11 @@ pub mod warp;
 
 use cmdjewel_core::gems::Gem;
 use cmdjewel_core::point::Point;
-use crate::view::BoardView;
 use cursive::event::Event;
 use cursive::event::EventResult;
 use cursive::Printer;
 use std::sync::Arc;
+use crate::constants;
 
 const EXPLOSION_GRAVITY: f32 = 0.04;
 
@@ -89,8 +89,8 @@ impl<T: Animation + 'static> cursive::view::View for AnimationView<T> {
             );
             // Prints it
             if self.data[i] != Gem::Empty {
-                printer.with_color(BoardView::gem_color(self.data[i]), |printer| {
-                    printer.print((point.0, point.1), &BoardView::gem_string(self.data[i]))
+                printer.with_color(constants::gems::gem_color(self.data[i]), |printer| {
+                    printer.print((point.0, point.1), &constants::gems::gem_string(self.data[i]))
                 });
             }
         }

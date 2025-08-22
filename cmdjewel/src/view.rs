@@ -1,7 +1,6 @@
 use crate::animations::{AnimationView, AnimationType, AnimationDetails};
-use crate::ui;
+use crate::{constants, ui};
 use cmdjewel_core::board::{Board, BoardConfig};
-use cmdjewel_core::gems::{Gem, GemColor};
 use cmdjewel_core::point;
 use cmdjewel_core::point::Point;
 use cursive::direction::Direction;
@@ -49,11 +48,6 @@ impl BoardView {
         }
     }
 
-    /// Gets a string of interesting debug info
-    pub fn get_debug(&self) -> String {
-        format!("is_buffer_empty: {}", self.board.is_buffer_empty())
-    }
-
     /// Sets the cursor to the first swappable gem
     pub fn hint(&mut self) {
         for i in 0..self.board.as_ref().len() {
@@ -65,7 +59,8 @@ impl BoardView {
         }
     }
 
-    // Explodes the board
+    /// Adds an AnimationDetails for an explosion.
+    /// This effectively makes a query for the BoardView to make a fullscreen explosion animation.
     pub fn animation_explode(&mut self) {
         self.animations.push(AnimationDetails {
             point: Point(0, 0),
@@ -74,7 +69,8 @@ impl BoardView {
         });
     }
 
-    // Initiates the warp animation
+    /// Adds an AnimationDetails for a warp animation.
+    /// This effectively makes a query for the BoardView to make a fullscreen warp animation.
     pub fn animation_warp(&mut self) {
         self.animations.push(AnimationDetails {
             point: Point(0, 0),
@@ -83,6 +79,7 @@ impl BoardView {
         });
     }
 
+    /// Swap two gems at the cursor in a given direction--but only if a valid move is possible.
     fn attempt_swap(&mut self, direction: point::Direction) {
         if self.board.is_valid_move(self.board.get_cursor(), direction) {
             self.board.swap(direction);
@@ -110,8 +107,11 @@ impl BoardView {
         });
     }
 
-    /// Creates all animations.
-    /// TODO: for moving the board, use reposition_layer
+    /// Handles the creation of all animations.
+    /// This is called:
+    /// - When `BoardView.animations` is empty.
+    /// - If `BoardView.animations_enabled = true`.
+    /// - Before `update_board()`.
     fn create_animations(&mut self) {
         // Highlight all matching gems
         if self.board.is_full() {
@@ -184,73 +184,15 @@ impl BoardView {
             }
         }
     }
-
-    // Generics
-
-    /// Gets a printable string from a game::Gems.
-    /// This doesn't belong in board as that file only contains game logic and nothing user-facing.
-    /// TODO: move to constants.rs
-    pub fn gem_string(gem: Gem) -> String {
-        match gem {
-            Gem::Empty => "•",
-            Gem::Normal(x) => match x {
-                GemColor::Blue => "▼",
-                GemColor::White => "●",
-                GemColor::Red => "■",
-                GemColor::Yellow => "◆",
-                GemColor::Green => "⬟",
-                GemColor::Orange => "⬢",
-                GemColor::Purple => "▲",
-            },
-            Gem::Flame(x) => match x {
-                GemColor::Blue => "▽",
-                GemColor::White => "○",
-                GemColor::Red => "□",
-                GemColor::Yellow => "◇",
-                GemColor::Green => "⬠",
-                GemColor::Orange => "⬡",
-                GemColor::Purple => "△",
-            },
-            Gem::Star(_) => "★",
-            Gem::Supernova(_) => "☆",
-            Gem::Hypercube(_) => "◩",
-        }
-        .into()
-    }
-
-    /// Gets a ColorStyle given a game::Gems
-    pub fn gem_color(gem: Gem) -> ColorStyle {
-        match gem {
-            Gem::Empty => ColorStyle::new(Color::Rgb(67, 76, 94), Color::Rgb(46, 52, 64)),
-            Gem::Normal(x) => BoardView::colorstyle_from_gemcolor(x),
-            Gem::Flame(x) => BoardView::colorstyle_from_gemcolor(x),
-            Gem::Star(x) => BoardView::colorstyle_from_gemcolor(x),
-            Gem::Supernova(x) => BoardView::colorstyle_from_gemcolor(x),
-            Gem::Hypercube(_) => ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(67, 76, 94)),
-        }
-    }
-
-    /// Returns a ColorStyle from a game::GemColor
-    fn colorstyle_from_gemcolor(gem_color: GemColor) -> ColorStyle {
-        match gem_color {
-            GemColor::Blue => ColorStyle::new(Color::Rgb(126, 158, 189), Color::Rgb(46, 52, 64)),
-            GemColor::White => ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64)),
-            GemColor::Red => ColorStyle::new(Color::Rgb(190, 96, 105), Color::Rgb(46, 52, 64)),
-            GemColor::Yellow => ColorStyle::new(Color::Rgb(233, 201, 138), Color::Rgb(46, 52, 64)),
-            GemColor::Green => ColorStyle::new(Color::Rgb(162, 188, 139), Color::Rgb(46, 52, 64)),
-            GemColor::Orange => ColorStyle::new(Color::Rgb(207, 135, 111), Color::Rgb(46, 52, 64)),
-            GemColor::Purple => ColorStyle::new(Color::Rgb(174, 174, 255), Color::Rgb(46, 52, 64)),
-        }
-    }
 }
 
 impl cursive::view::View for BoardView {
     fn draw(&self, printer: &Printer) {
         // Loop through each gem/cell
         for i in 0..self.board.as_ref().len() {
-            let string = BoardView::gem_string(self.board.as_ref()[i]);
+            let string = constants::gems::gem_string(self.board.as_ref()[i]);
             let point = self.board.index_to_point(i);
-            let mut color = BoardView::gem_color(self.board.as_ref()[i]);
+            let mut color = constants::gems::gem_color(self.board.as_ref()[i]);
             // Swap colors for highlighted gems.
             self.animations.iter().for_each(|anim| {
                 if anim.point.0 == point.0
@@ -370,10 +312,7 @@ impl cursive::view::View for BoardView {
                             )
                             .with_on_finish(move |s| {
                                 ui::show_menu_main(s);
-                                s.add_layer(Dialog::info(format!(
-                                    "Game over! You scored {} points and got to level {}.",
-                                    score, level
-                                )));
+                                s.add_layer(Dialog::info(strings::game_over(score, level)));
                             })
                             .full_screen(),
                         );

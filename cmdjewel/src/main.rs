@@ -4,7 +4,6 @@ mod view;
 mod multiline_button;
 mod constants;
 
-use std::thread;
 use cpal::traits::StreamTrait;
 use cursive::traits::With;
 
