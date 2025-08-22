@@ -1,4 +1,4 @@
-use crate::animations::{AnimationView, AnimationType, CellAnimation};
+use crate::animations::{AnimationView, AnimationType, AnimationDetails};
 use crate::ui;
 use cmdjewel_core::board::{Board, BoardConfig};
 use cmdjewel_core::gems::{Gem, GemColor};
@@ -31,7 +31,7 @@ impl std::fmt::Display for CursorMode {
 pub struct BoardView {
     board: Board,
     has_focus: bool,
-    animations: Vec<CellAnimation>,
+    animations: Vec<AnimationDetails>,
     pub cursor_mode: CursorMode,
     pub autoplay: bool,
     pub animations_enabled: bool,
@@ -67,7 +67,7 @@ impl BoardView {
 
     // Explodes the board
     pub fn animation_explode(&mut self) {
-        self.animations.push(CellAnimation {
+        self.animations.push(AnimationDetails {
             point: Point(0, 0),
             duration: 10,
             animation_type: AnimationType::Explosion,
@@ -76,7 +76,7 @@ impl BoardView {
 
     // Initiates the warp animation
     pub fn animation_warp(&mut self) {
-        self.animations.push(CellAnimation {
+        self.animations.push(AnimationDetails {
             point: Point(0, 0),
             duration: 2,
             animation_type: AnimationType::Warp,
@@ -90,7 +90,7 @@ impl BoardView {
         self.cursor_mode = CursorMode::Normal;
     }
 
-    /// Updatess all animations. Animations are automatically destroyed in the event loop.
+    /// Updates all animations. Animations are automatically destroyed in the event loop.
     fn update_animations(&mut self) {
         // Reduce duration of each animation
         self.animations.iter_mut().for_each(|animation| {
@@ -122,7 +122,7 @@ impl BoardView {
                 .chain(self.board.get_matching_special_gems())
                 .for_each(|x| {
                     if !points.contains(&x) {
-                        self.animations.push(CellAnimation {
+                        self.animations.push(AnimationDetails {
                             point: x,
                             duration: 8,
                             animation_type: AnimationType::Highlight,
@@ -365,7 +365,7 @@ impl cursive::view::View for BoardView {
                             .unwrap();
                         s.screen_mut().add_fullscreen_layer(
                             AnimationView::new(
-                                crate::animations::Explosion::new(data.len(), 1.0),
+                                crate::animations::explosion::Explosion::new(data.len(), 1.0),
                                 data,
                             )
                             .with_on_finish(move |s| {
@@ -384,7 +384,7 @@ impl cursive::view::View for BoardView {
                             .call_on_name("board", |b: &mut BoardView| b.board.as_ref().to_vec())
                             .unwrap();
                         s.screen_mut().add_fullscreen_layer(
-                            AnimationView::new(crate::animations::Warp::new(data.len(), 1.0), data)
+                            AnimationView::new(crate::animations::warp::Warp::new(data.len(), 1.0), data)
                                 .full_screen(),
                         )
                     }
