@@ -211,12 +211,7 @@ impl Board {
     /// Swaps a gem with a gem in an adjacent direction, which points from the destination from the cursor. **Wrapper for private Board.swap.**
     pub fn swap(&mut self, direction: Direction) {
         // Get a destination point from the direction
-        let destination = match direction {
-            Direction::Left => self.cursor - Point(1, 0),
-            Direction::Right => self.cursor + Point(1, 0),
-            Direction::Up => self.cursor - Point(0, 1),
-            Direction::Down => self.cursor + Point(0, 1),
-        };
+        let destination = self.get_destination(&direction);
         // If the cursor is on a hypercube, store the direction of swappage.
         if let Gem::Hypercube(_) = self.data[self.point_to_index(self.cursor)] {
             // Hypercubes matching with hypercubes destroy whole boards.
@@ -426,8 +421,10 @@ impl Board {
             self.level_progress += self.get_swap_progress();
         });
         // Iterate over the chains and add special gems.
+        // TODO: Find a way to see what special gems were added -- as a way for implementations to create animations.
         chains.iter().for_each(|chain| {
             if chain.len() == 4 {
+                // TODO: Create gems where *they were matched*
                 self.data[self.point_to_index(chain[1])] =
                     Gem::Flame(self.color_at_point(&data_clone, chain[0]).unwrap());
             }
@@ -476,12 +473,7 @@ impl Board {
             false
         } else {
             // Store the destination coordinates
-            let destination = match direction {
-                Direction::Left => point - Point(1, 0),
-                Direction::Right => point + Point(1, 0),
-                Direction::Up => point - Point(0, 1),
-                Direction::Down => point + Point(0, 1),
-            };
+            let destination = self.get_destination(&direction);
             // 1. Check if the cursor and destination are in the map.
             if self.is_in_board(self.cursor) && self.is_in_board(destination) {
                 // 2. Copy the board
@@ -555,12 +547,7 @@ impl Board {
 
     /// Moves the cursor by 1 in an adjacent direction to it.
     pub fn move_cursor(&mut self, direction: Direction) {
-        let destination = match direction {
-            Direction::Left => self.cursor - Point(1, 0),
-            Direction::Right => self.cursor + Point(1, 0),
-            Direction::Up => self.cursor - Point(0, 1),
-            Direction::Down => self.cursor + Point(0, 1),
-        };
+        let destination = self.get_destination(&direction);
         if self.is_in_board(destination) {
             self.cursor = destination;
         }
@@ -574,6 +561,16 @@ impl Board {
     /// Gets the coordinates of the cursor
     pub fn get_cursor(&self) -> Point<usize> {
         self.cursor
+    }
+    
+    /// Gets the destination of a swap, given a cursor and direction
+    pub fn get_destination(&self, direction: &Direction) -> Point<usize> { 
+        match direction {
+            Direction::Left => self.cursor - Point(1, 0),
+            Direction::Right => self.cursor + Point(1, 0),
+            Direction::Up => self.cursor - Point(0, 1),
+            Direction::Down => self.cursor + Point(0, 1),
+        }
     }
 
     /// Returns a reference to `self.data`

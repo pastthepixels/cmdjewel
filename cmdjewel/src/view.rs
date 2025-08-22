@@ -135,10 +135,12 @@ impl BoardView {
         if !self.board.is_valid() && self.board.is_full() {
             self.animation_explode();
         }
+        // TODO: get inserted power gems, and make them blink.
     }
 
     /// Updates board logic.
     fn update_board(&mut self) {
+        /// TODO: get inserted gems
         if self.board.is_buffer_empty() {
             if self.board.is_full() {
                 self.board.update_matching_gems();
