@@ -16,6 +16,21 @@ const WARP_REPEL_DISTANCE: f32 = 5.;
 // How many keyframes are needed for the warp animation to push out everything
 const WARP_KEYFRAMES: usize = 50;
 
+/// Animations
+#[derive(PartialEq, Eq)]
+pub enum AnimationType {
+    Blink(bool),
+    Highlight,
+    Explosion,
+    Warp,
+}
+
+pub struct CellAnimation {
+    pub point: Point<usize>,
+    pub duration: u8,
+    pub animation_type: AnimationType,
+}
+
 /// Fullscreen animations.
 pub struct AnimationView<T: Animation + 'static> {
     animation: T,

@@ -1,4 +1,4 @@
-use crate::animations::AnimationView;
+use crate::animations::{AnimationView, AnimationType, CellAnimation};
 use crate::ui;
 use cmdjewel_core::board::{Board, BoardConfig};
 use cmdjewel_core::gems::{Gem, GemColor};
@@ -19,21 +19,6 @@ pub enum CursorMode {
     Swap,
 }
 
-/// Animations
-#[derive(PartialEq, Eq)]
-pub enum AnimationType {
-    Blink(bool),
-    Highlight,
-    Explosion,
-    Warp,
-}
-
-pub struct Animation {
-    pub point: Point<usize>,
-    pub duration: u8,
-    pub animation_type: AnimationType,
-}
-
 impl std::fmt::Display for CursorMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -46,7 +31,7 @@ impl std::fmt::Display for CursorMode {
 pub struct BoardView {
     board: Board,
     has_focus: bool,
-    animations: Vec<Animation>,
+    animations: Vec<CellAnimation>,
     pub cursor_mode: CursorMode,
     pub autoplay: bool,
     pub animations_enabled: bool,
@@ -82,7 +67,7 @@ impl BoardView {
 
     // Explodes the board
     pub fn animation_explode(&mut self) {
-        self.animations.push(Animation {
+        self.animations.push(CellAnimation {
             point: Point(0, 0),
             duration: 10,
             animation_type: AnimationType::Explosion,
@@ -91,7 +76,7 @@ impl BoardView {
 
     // Initiates the warp animation
     pub fn animation_warp(&mut self) {
-        self.animations.push(Animation {
+        self.animations.push(CellAnimation {
             point: Point(0, 0),
             duration: 2,
             animation_type: AnimationType::Warp,
@@ -137,7 +122,7 @@ impl BoardView {
                 .chain(self.board.get_matching_special_gems())
                 .for_each(|x| {
                     if !points.contains(&x) {
-                        self.animations.push(Animation {
+                        self.animations.push(CellAnimation {
                             point: x,
                             duration: 8,
                             animation_type: AnimationType::Highlight,
