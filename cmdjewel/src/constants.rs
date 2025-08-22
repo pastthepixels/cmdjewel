@@ -16,10 +16,11 @@ pub mod strings {
     pub const MSG_WELCOME: &str = "Welcome to cmdjewel!\nUse the arrow keys and enter to move around.";
     pub const MAIN_MENU: &str = "Main Menu";
     pub const QUIT: &str = "Quit";
-    pub const PLAY : &str = "Play Game";
-    pub const LEVEL : &str = "Level";
-    pub const SCORE : &str = "Score";
-    pub const HINT : &str = "Hint";
-    pub const COMMAND : &str = "Command";
-    pub const CMD_NOT_FOUND : &str = "Command not found. Available commands are main/m, play/p [classic/zen], q[a/!], hint/h";
+    pub const PLAY: &str = "Play Game";
+    pub const LEVEL: &str = "Level";
+    pub const SCORE: &str = "Score";
+    pub const HINT: &str = "Hint";
+    pub const COMMAND: &str = "Command";
+    pub const CMD_NOT_FOUND: &str = "Command not found. Available commands are main/m, play/p [classic/zen], q[a/!], hint/h";
+    pub const KEY_NOT_FOUND: &str = "Key not recognized. Use the arrow keys to move and the enter key to enter SWAP mode.";
 }

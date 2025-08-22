@@ -11,6 +11,7 @@ use cursive::traits::Resizable;
 use cursive::view::CannotFocus;
 use cursive::views::{Dialog, ProgressBar, TextView};
 use cursive::{Printer, Vec2};
+use crate::constants::strings;
 
 /// Cursor modes
 pub enum CursorMode {
@@ -21,6 +22,7 @@ pub enum CursorMode {
 /// Animations
 #[derive(PartialEq, Eq)]
 pub enum AnimationType {
+    Blink(bool),
     Highlight,
     Explosion,
     Warp,
@@ -107,6 +109,16 @@ impl BoardView {
     fn update_animations(&mut self) {
         // Reduce duration of each animation
         self.animations.iter_mut().for_each(|animation| {
+            // Animation logic
+            match animation.animation_type {
+                AnimationType::Blink(s) => {
+                    if animation.duration % 2 == 0 {
+                        animation.animation_type = AnimationType::Blink(!s)
+                    }
+                },
+                _ => ()
+            }
+            // Count down all animations
             if animation.duration != 0 {
                 animation.duration -= 1;
             }
@@ -192,6 +204,7 @@ impl BoardView {
 
     /// Gets a printable string from a game::Gems.
     /// This doesn't belong in board as that file only contains game logic and nothing user-facing.
+    /// TODO: move to constants.rs
     pub fn gem_string(gem: Gem) -> String {
         match gem {
             Gem::Empty => "•",
@@ -248,6 +261,7 @@ impl BoardView {
 
 impl cursive::view::View for BoardView {
     fn draw(&self, printer: &Printer) {
+        // Loop through each gem/cell
         for i in 0..self.board.as_ref().len() {
             let string = BoardView::gem_string(self.board.as_ref()[i]);
             let point = self.board.index_to_point(i);
@@ -256,14 +270,14 @@ impl cursive::view::View for BoardView {
             self.animations.iter().for_each(|anim| {
                 if anim.point.0 == point.0
                     && anim.point.1 == point.1
-                    && anim.animation_type == AnimationType::Highlight
+                    && (anim.animation_type == AnimationType::Highlight || anim.animation_type == AnimationType::Blink(true))
                 {
                     color = color.invert();
                 }
             });
             // If there's no animation happening, you can theme the cell under whatever conditions.
             if self.animations.is_empty() {
-                // for instance, this is the cursor.
+                // for instance, if the cursor is in the same position, set some custom colors.
                 if i == self.board.point_to_index(self.board.get_cursor()) {
                     color = match self.cursor_mode {
                         CursorMode::Normal => {
@@ -279,6 +293,7 @@ impl cursive::view::View for BoardView {
             if !self.has_focus {
                 color = ColorStyle::new(Color::Rgb(76, 86, 106), Color::Rgb(59, 66, 82))
             }
+            // Print things, with spacing!
             printer.with_color(color, |printer| {
                 printer.print((point.0 * 3, point.1), &format!(" {} ", string))
             });
@@ -307,6 +322,7 @@ impl cursive::view::View for BoardView {
                 let mut is_animation_removed = false;
                 for i in (0..self.animations.len()).rev() {
                     if self.animations[i].duration == 0 {
+                        // Remove finished animations
                         self.animations.remove(i);
                         is_animation_removed = true;
                     } else {
@@ -352,7 +368,7 @@ impl cursive::view::View for BoardView {
                         score_view.set_content(format!("{}", score))
                     });
                     s.call_on_name("level", |level_view: &mut TextView| {
-                        level_view.set_content(format!("Level {}", level))
+                        level_view.set_content(format!("{} {}", strings::LEVEL, level))
                     });
                     s.call_on_name("progress", |p: &mut ProgressBar| {
                         p.set_value(progress as usize)
@@ -404,7 +420,7 @@ impl cursive::view::View for BoardView {
                 'k' => self.move_cursor(point::Direction::Up),
                 'j' => self.move_cursor(point::Direction::Down),
                 _ => EventResult::with_cb(move |s| {
-                    s.add_layer(Dialog::info("Key not recognized. Use the arrow keys to move and the enter key to enter SWAP mode."));
+                    s.add_layer(Dialog::info(strings::KEY_NOT_FOUND));
                 }),
             },
             Event::Key(cursive::event::Key::Left) => self.move_cursor(point::Direction::Left),
