@@ -10,6 +10,7 @@ use cursive::traits::Resizable;
 use cursive::view::CannotFocus;
 use cursive::views::{Dialog, ProgressBar, TextView};
 use cursive::{Printer, Vec2};
+use cmdjewel_core::gems::Gem;
 use crate::constants::strings;
 
 /// Cursor modes
@@ -116,17 +117,28 @@ impl BoardView {
         // Highlight all matching gems
         if self.board.is_full() {
             let mut points: Vec<Point<usize>> = Vec::new();
+            // Highlight matching gems
             self.board
                 .get_matching_gems()
                 .into_iter()
                 .chain(self.board.get_matching_special_gems())
                 .for_each(|x| {
                     if !points.contains(&x) {
-                        self.animations.push(AnimationDetails {
-                            point: x,
-                            duration: 8,
-                            animation_type: AnimationType::Highlight,
-                        });
+                        if let Gem::Normal(_) = self.board.get_gem(x.clone()) {
+                            // Highlight normal gems
+                            self.animations.push(AnimationDetails {
+                                point: x,
+                                duration: 8,
+                                animation_type: AnimationType::Highlight,
+                            });
+                        } else {
+                            // Blink special gems
+                            self.animations.push(AnimationDetails {
+                                point: x,
+                                duration: 16,
+                                animation_type: AnimationType::Blink(true),
+                            });
+                        }
                         points.push(x);
                     }
                 });
@@ -140,10 +152,23 @@ impl BoardView {
 
     /// Updates board logic.
     fn update_board(&mut self) {
-        /// TODO: get inserted gems
+        // TODO: get inserted gems
         if self.board.is_buffer_empty() {
             if self.board.is_full() {
-                self.board.update_matching_gems();
+                let inserted = self.board.update_matching_gems();
+                inserted.iter().for_each(|p| {
+                    // Blinks inserted gems
+                    if self.animations_enabled {
+                        self.animations.push(AnimationDetails {
+                            point: *p,
+                            duration: 16,
+                            animation_type: AnimationType::Blink(true),
+                        })
+                    }
+                });
+                if inserted.len() > 0 {
+                    return;
+                }
             } else {
                 self.board.fill_gem_buffer();
             }
