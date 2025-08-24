@@ -1,7 +1,6 @@
-use crate::animations::AnimationView;
-use crate::ui;
+use crate::animations::{AnimationView, AnimationType, AnimationDetails};
+use crate::{constants, ui};
 use cmdjewel_core::board::{Board, BoardConfig};
-use cmdjewel_core::gems::{Gem, GemColor};
 use cmdjewel_core::point;
 use cmdjewel_core::point::Point;
 use cursive::direction::Direction;
@@ -11,25 +10,13 @@ use cursive::traits::Resizable;
 use cursive::view::CannotFocus;
 use cursive::views::{Dialog, ProgressBar, TextView};
 use cursive::{Printer, Vec2};
+use cmdjewel_core::gems::Gem;
+use crate::constants::strings;
 
 /// Cursor modes
 pub enum CursorMode {
     Normal,
     Swap,
-}
-
-/// Animations
-#[derive(PartialEq, Eq)]
-pub enum AnimationType {
-    Highlight,
-    Explosion,
-    Warp,
-}
-
-pub struct Animation {
-    pub point: Point<usize>,
-    pub duration: u8,
-    pub animation_type: AnimationType,
 }
 
 impl std::fmt::Display for CursorMode {
@@ -44,7 +31,7 @@ impl std::fmt::Display for CursorMode {
 pub struct BoardView {
     board: Board,
     has_focus: bool,
-    animations: Vec<Animation>,
+    animations: Vec<AnimationDetails>,
     pub cursor_mode: CursorMode,
     pub autoplay: bool,
     pub animations_enabled: bool,
@@ -62,11 +49,6 @@ impl BoardView {
         }
     }
 
-    /// Gets a string of interesting debug info
-    pub fn get_debug(&self) -> String {
-        format!("is_buffer_empty: {}", self.board.is_buffer_empty())
-    }
-
     /// Sets the cursor to the first swappable gem
     pub fn hint(&mut self) {
         for i in 0..self.board.as_ref().len() {
@@ -78,24 +60,27 @@ impl BoardView {
         }
     }
 
-    // Explodes the board
+    /// Adds an AnimationDetails for an explosion.
+    /// This effectively makes a query for the BoardView to make a fullscreen explosion animation.
     pub fn animation_explode(&mut self) {
-        self.animations.push(Animation {
+        self.animations.push(AnimationDetails {
             point: Point(0, 0),
             duration: 10,
             animation_type: AnimationType::Explosion,
         });
     }
 
-    // Initiates the warp animation
+    /// Adds an AnimationDetails for a warp animation.
+    /// This effectively makes a query for the BoardView to make a fullscreen warp animation.
     pub fn animation_warp(&mut self) {
-        self.animations.push(Animation {
+        self.animations.push(AnimationDetails {
             point: Point(0, 0),
             duration: 2,
             animation_type: AnimationType::Warp,
         });
     }
 
+    /// Swap two gems at the cursor in a given direction--but only if a valid move is possible.
     fn attempt_swap(&mut self, direction: point::Direction) {
         if self.board.is_valid_move(self.board.get_cursor(), direction) {
             self.board.swap(direction);
@@ -103,33 +88,57 @@ impl BoardView {
         self.cursor_mode = CursorMode::Normal;
     }
 
-    /// Updatess all animations. Animations are automatically destroyed in the event loop.
+    /// Updates all animations. Animations are automatically destroyed in the event loop.
     fn update_animations(&mut self) {
         // Reduce duration of each animation
         self.animations.iter_mut().for_each(|animation| {
+            // Animation logic
+            match animation.animation_type {
+                AnimationType::Blink(s) => {
+                    if animation.duration % 2 == 0 {
+                        animation.animation_type = AnimationType::Blink(!s)
+                    }
+                },
+                _ => ()
+            }
+            // Count down all animations
             if animation.duration != 0 {
                 animation.duration -= 1;
             }
         });
     }
 
-    /// Creates all animations.
-    /// TODO: for moving the board, use reposition_layer
+    /// Handles the creation of all animations.
+    /// This is called:
+    /// - When `BoardView.animations` is empty.
+    /// - If `BoardView.animations_enabled = true`.
+    /// - Before `update_board()`.
     fn create_animations(&mut self) {
         // Highlight all matching gems
         if self.board.is_full() {
             let mut points: Vec<Point<usize>> = Vec::new();
+            // Highlight matching gems
             self.board
                 .get_matching_gems()
                 .into_iter()
                 .chain(self.board.get_matching_special_gems())
                 .for_each(|x| {
                     if !points.contains(&x) {
-                        self.animations.push(Animation {
-                            point: x,
-                            duration: 8,
-                            animation_type: AnimationType::Highlight,
-                        });
+                        if let Gem::Normal(_) = self.board.get_gem(x.clone()) {
+                            // Highlight normal gems
+                            self.animations.push(AnimationDetails {
+                                point: x,
+                                duration: 8,
+                                animation_type: AnimationType::Highlight,
+                            });
+                        } else {
+                            // Blink special gems
+                            self.animations.push(AnimationDetails {
+                                point: x,
+                                duration: 16,
+                                animation_type: AnimationType::Blink(true),
+                            });
+                        }
                         points.push(x);
                     }
                 });
@@ -138,13 +147,28 @@ impl BoardView {
         if !self.board.is_valid() && self.board.is_full() {
             self.animation_explode();
         }
+        // TODO: get inserted power gems, and make them blink.
     }
 
     /// Updates board logic.
     fn update_board(&mut self) {
+        // TODO: get inserted gems
         if self.board.is_buffer_empty() {
             if self.board.is_full() {
-                self.board.update_matching_gems();
+                let inserted = self.board.update_matching_gems();
+                inserted.iter().for_each(|p| {
+                    // Blinks inserted gems
+                    if self.animations_enabled {
+                        self.animations.push(AnimationDetails {
+                            point: *p,
+                            duration: 16,
+                            animation_type: AnimationType::Blink(true),
+                        })
+                    }
+                });
+                if inserted.len() > 0 {
+                    return;
+                }
             } else {
                 self.board.fill_gem_buffer();
             }
@@ -187,83 +211,27 @@ impl BoardView {
             }
         }
     }
-
-    // Generics
-
-    /// Gets a printable string from a game::Gems.
-    /// This doesn't belong in board as that file only contains game logic and nothing user-facing.
-    pub fn gem_string(gem: Gem) -> String {
-        match gem {
-            Gem::Empty => "•",
-            Gem::Normal(x) => match x {
-                GemColor::Blue => "▼",
-                GemColor::White => "●",
-                GemColor::Red => "■",
-                GemColor::Yellow => "◆",
-                GemColor::Green => "⬟",
-                GemColor::Orange => "⬢",
-                GemColor::Purple => "▲",
-            },
-            Gem::Flame(x) => match x {
-                GemColor::Blue => "▽",
-                GemColor::White => "○",
-                GemColor::Red => "□",
-                GemColor::Yellow => "◇",
-                GemColor::Green => "⬠",
-                GemColor::Orange => "⬡",
-                GemColor::Purple => "△",
-            },
-            Gem::Star(_) => "★",
-            Gem::Supernova(_) => "☆",
-            Gem::Hypercube(_) => "◩",
-        }
-        .into()
-    }
-
-    /// Gets a ColorStyle given a game::Gems
-    pub fn gem_color(gem: Gem) -> ColorStyle {
-        match gem {
-            Gem::Empty => ColorStyle::new(Color::Rgb(67, 76, 94), Color::Rgb(46, 52, 64)),
-            Gem::Normal(x) => BoardView::colorstyle_from_gemcolor(x),
-            Gem::Flame(x) => BoardView::colorstyle_from_gemcolor(x),
-            Gem::Star(x) => BoardView::colorstyle_from_gemcolor(x),
-            Gem::Supernova(x) => BoardView::colorstyle_from_gemcolor(x),
-            Gem::Hypercube(_) => ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(67, 76, 94)),
-        }
-    }
-
-    /// Returns a ColorStyle from a game::GemColor
-    fn colorstyle_from_gemcolor(gem_color: GemColor) -> ColorStyle {
-        match gem_color {
-            GemColor::Blue => ColorStyle::new(Color::Rgb(126, 158, 189), Color::Rgb(46, 52, 64)),
-            GemColor::White => ColorStyle::new(Color::Rgb(213, 219, 230), Color::Rgb(46, 52, 64)),
-            GemColor::Red => ColorStyle::new(Color::Rgb(190, 96, 105), Color::Rgb(46, 52, 64)),
-            GemColor::Yellow => ColorStyle::new(Color::Rgb(233, 201, 138), Color::Rgb(46, 52, 64)),
-            GemColor::Green => ColorStyle::new(Color::Rgb(162, 188, 139), Color::Rgb(46, 52, 64)),
-            GemColor::Orange => ColorStyle::new(Color::Rgb(207, 135, 111), Color::Rgb(46, 52, 64)),
-            GemColor::Purple => ColorStyle::new(Color::Rgb(174, 174, 255), Color::Rgb(46, 52, 64)),
-        }
-    }
 }
 
 impl cursive::view::View for BoardView {
     fn draw(&self, printer: &Printer) {
+        // Loop through each gem/cell
         for i in 0..self.board.as_ref().len() {
-            let string = BoardView::gem_string(self.board.as_ref()[i]);
+            let string = constants::gems::gem_string(self.board.as_ref()[i]);
             let point = self.board.index_to_point(i);
-            let mut color = BoardView::gem_color(self.board.as_ref()[i]);
+            let mut color = constants::gems::gem_color(self.board.as_ref()[i]);
             // Swap colors for highlighted gems.
             self.animations.iter().for_each(|anim| {
                 if anim.point.0 == point.0
                     && anim.point.1 == point.1
-                    && anim.animation_type == AnimationType::Highlight
+                    && (anim.animation_type == AnimationType::Highlight || anim.animation_type == AnimationType::Blink(true))
                 {
                     color = color.invert();
                 }
             });
             // If there's no animation happening, you can theme the cell under whatever conditions.
             if self.animations.is_empty() {
-                // for instance, this is the cursor.
+                // for instance, if the cursor is in the same position, set some custom colors.
                 if i == self.board.point_to_index(self.board.get_cursor()) {
                     color = match self.cursor_mode {
                         CursorMode::Normal => {
@@ -279,6 +247,7 @@ impl cursive::view::View for BoardView {
             if !self.has_focus {
                 color = ColorStyle::new(Color::Rgb(76, 86, 106), Color::Rgb(59, 66, 82))
             }
+            // Print things, with spacing!
             printer.with_color(color, |printer| {
                 printer.print((point.0 * 3, point.1), &format!(" {} ", string))
             });
@@ -307,6 +276,7 @@ impl cursive::view::View for BoardView {
                 let mut is_animation_removed = false;
                 for i in (0..self.animations.len()).rev() {
                     if self.animations[i].duration == 0 {
+                        // Remove finished animations
                         self.animations.remove(i);
                         is_animation_removed = true;
                     } else {
@@ -352,7 +322,7 @@ impl cursive::view::View for BoardView {
                         score_view.set_content(format!("{}", score))
                     });
                     s.call_on_name("level", |level_view: &mut TextView| {
-                        level_view.set_content(format!("Level {}", level))
+                        level_view.set_content(format!("{} {}", strings::LEVEL, level))
                     });
                     s.call_on_name("progress", |p: &mut ProgressBar| {
                         p.set_value(progress as usize)
@@ -364,15 +334,12 @@ impl cursive::view::View for BoardView {
                             .unwrap();
                         s.screen_mut().add_fullscreen_layer(
                             AnimationView::new(
-                                crate::animations::Explosion::new(data.len(), 1.0),
+                                crate::animations::explosion::Explosion::new(data.len(), 1.0),
                                 data,
                             )
                             .with_on_finish(move |s| {
                                 ui::show_menu_main(s);
-                                s.add_layer(Dialog::info(format!(
-                                    "Game over! You scored {} points and got to level {}.",
-                                    score, level
-                                )));
+                                s.add_layer(Dialog::info(strings::game_over(score, level)));
                             })
                             .full_screen(),
                         );
@@ -383,7 +350,7 @@ impl cursive::view::View for BoardView {
                             .call_on_name("board", |b: &mut BoardView| b.board.as_ref().to_vec())
                             .unwrap();
                         s.screen_mut().add_fullscreen_layer(
-                            AnimationView::new(crate::animations::Warp::new(data.len(), 1.0), data)
+                            AnimationView::new(crate::animations::warp::Warp::new(data.len(), 1.0), data)
                                 .full_screen(),
                         )
                     }
@@ -404,7 +371,7 @@ impl cursive::view::View for BoardView {
                 'k' => self.move_cursor(point::Direction::Up),
                 'j' => self.move_cursor(point::Direction::Down),
                 _ => EventResult::with_cb(move |s| {
-                    s.add_layer(Dialog::info("Key not recognized. Use the arrow keys to move and the enter key to enter SWAP mode."));
+                    s.add_layer(Dialog::info(strings::KEY_NOT_FOUND));
                 }),
             },
             Event::Key(cursive::event::Key::Left) => self.move_cursor(point::Direction::Left),
