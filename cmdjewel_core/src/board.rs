@@ -96,7 +96,7 @@ impl Board {
             self.level += 1;
         }
     }
-    
+
     /// Gets a gem from a point
     pub fn get_gem(&mut self, point: Point<usize>) -> Gem {
         self.data[self.point_to_index(point)]
@@ -481,7 +481,7 @@ impl Board {
             false
         } else {
             // Store the destination coordinates
-            let destination = self.get_destination(&direction);
+            let destination = self.get_destination_from(point, &direction);
             // 1. Check if the cursor and destination are in the map.
             if self.is_in_board(self.cursor) && self.is_in_board(destination) {
                 // 2. Copy the board
@@ -571,13 +571,18 @@ impl Board {
         self.cursor
     }
     
-    /// Gets the destination of a swap, given a cursor and direction
-    pub fn get_destination(&self, direction: &Direction) -> Point<usize> { 
+    /// Gets the destination of a swap, given the cursor and a destination
+    pub fn get_destination(&self, direction: &Direction) -> Point<usize> {
+        self.get_destination_from(self.cursor, direction)
+    }
+    
+    /// Gets the destination of a swap, given a point and direction
+    pub fn get_destination_from(&self, from: Point<usize>, direction: &Direction) -> Point<usize> { 
         match direction {
-            Direction::Left => self.cursor - Point(1, 0),
-            Direction::Right => self.cursor + Point(1, 0),
-            Direction::Up => self.cursor - Point(0, 1),
-            Direction::Down => self.cursor + Point(0, 1),
+            Direction::Left => from - Point(1, 0),
+            Direction::Right => from + Point(1, 0),
+            Direction::Up => from - Point(0, 1),
+            Direction::Down => from + Point(0, 1),
         }
     }
 
