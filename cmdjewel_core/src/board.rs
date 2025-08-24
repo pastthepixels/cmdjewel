@@ -96,6 +96,11 @@ impl Board {
             self.level += 1;
         }
     }
+    
+    /// Gets a gem from a point
+    pub fn get_gem(&mut self, point: Point<usize>) -> Gem {
+        self.data[self.point_to_index(point)]
+    }
 
     /// Gets the score
     pub fn get_score(&self) -> u32 {
@@ -376,7 +381,8 @@ impl Board {
     /// - Removes them, replacing them with empty spaces.
     /// - Adds points for each matching gem.
     /// - Adds special gems if applicable.
-    pub fn update_matching_gems(&mut self) {
+    /// Returns a vector of the positions of all special gems that have been added.
+    pub fn update_matching_gems(&mut self) -> Vec<Point<usize>> {
         let mut matching_gems = self.get_matching_gems();
         // Check for special gems
         // One-directional chains (flame gems, hypercubes, supernova gems)
@@ -411,7 +417,6 @@ impl Board {
                 chains.push(vec![*point]);
             }
         });
-        // TODO: memcpy should be finnnee but make it faster
         let data_clone = self.data;
         // Set every matching gem and (matching) special gem to empty
         matching_gems.append(&mut self.get_matching_special_gems());
@@ -421,17 +426,20 @@ impl Board {
             self.level_progress += self.get_swap_progress();
         });
         // Iterate over the chains and add special gems.
-        // TODO: Find a way to see what special gems were added -- as a way for implementations to create animations.
+        let mut points = vec![];
         chains.iter().for_each(|chain| {
             if chain.len() == 4 {
                 // TODO: Create gems where *they were matched*
                 self.data[self.point_to_index(chain[1])] =
                     Gem::Flame(self.color_at_point(&data_clone, chain[0]).unwrap());
+                points.push(chain[1]);
             }
             if chain.len() == 5 {
                 self.data[self.point_to_index(chain[2])] = Gem::Hypercube(GemSelector::None);
+                points.push(chain[2]);
             }
         });
+        points
     }
 
     /// Returns true if the entire board is filled with gems.
