@@ -4,7 +4,7 @@ use cmdjewel_core::board::{Board, BoardConfig};
 use cmdjewel_core::point;
 use cmdjewel_core::point::Point;
 use cursive::direction::Direction;
-use cursive::event::{Event, EventResult};
+use cursive::event::{Event, EventResult, MouseEvent};
 use cursive::theme::{Color, ColorStyle};
 use cursive::traits::Resizable;
 use cursive::view::CannotFocus;
@@ -268,6 +268,46 @@ impl cursive::view::View for BoardView {
         }
         // Handle events
         match event {
+            Event::Mouse { offset, position, event } => {
+                // NOTE: 3 is some constant that represents the width of each gem
+                let point : Point<usize> = Point((position.x - offset.x) / 3, position.y - offset.y);
+                static mut PREV: Point<usize> = Point(0, 0);
+                match event {
+                    MouseEvent::Press(_) => {
+                        if point.0 < 8 && point.1 < 8 {
+                            unsafe{ PREV = point; }
+                            self.board.set_cursor(point);
+                            self.cursor_mode = CursorMode::Swap;
+                            EventResult::Consumed(None)
+                        } else {
+                            EventResult::Ignored
+                        }
+                    }
+                    MouseEvent::Release(_) => unsafe {
+                        let dir = if (PREV.0 as i32 - point.0 as i32) < 0 {
+                            Some(point::Direction::Right)
+                        } else if (PREV.0 - point.0) > 0 {
+                            Some(point::Direction::Left)
+                        } else if (PREV.1 as i32 - point.1 as i32) < 0 {
+                            Some(point::Direction::Down)
+                        } else if (PREV.1 - point.1) > 0 {
+                            Some(point::Direction::Up)
+                        } else {
+                            None
+                        };
+                        if let Some(d) = dir {
+                            self.attempt_swap(d);
+                            EventResult::Consumed(None)
+                        } else {
+                            self.cursor_mode = CursorMode::Normal;
+                            EventResult::Ignored
+                        }
+                    }
+                    _ => {
+                        EventResult::Ignored
+                    }
+                }
+            },
             Event::Refresh => {
                 let mut initial_level = self.board.get_level() + 1;
                 // Updates animations
