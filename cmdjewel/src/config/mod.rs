@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fs::File;
 use std::io::Read;
 
@@ -29,4 +30,29 @@ pub fn get_music_vol() -> f32 {
     } else {
         1.
     }
+}
+
+/// Gets the current save--and returns None if it is invalid or doesn't exist.
+pub fn get_save() -> Option<data::Save> {
+    if let Some(cfg) = load_config() {
+        if cfg.save.len() < cfg.save_id {
+            Some(cfg.save[cfg.save_id].clone())
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+/// Gets all saves.
+pub fn get_saves() -> Vec<data::Save> {
+    todo!();
+}
+
+
+/// Writes a save to config.toml; creates it if it doesn't exist.
+/// If the save ID exists, it overwrites it. If the save ID does not exist, it adds it to the list of saves.
+pub fn write_save(save: data::Save) {
+    todo!();
 }

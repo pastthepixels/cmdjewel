@@ -17,7 +17,7 @@ pub struct Settings {
     pub music_vol : f32
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Save {
     /// Name of the player that the save belongs to.
     pub name: String,
