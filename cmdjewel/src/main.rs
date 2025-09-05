@@ -1,8 +1,8 @@
 mod animations;
+mod constants;
+mod multiline_button;
 mod ui;
 mod view;
-mod multiline_button;
-mod constants;
 
 use cpal::traits::StreamTrait;
 use cursive::traits::With;
@@ -41,7 +41,10 @@ fn main() {
     // as a command to change the background.
     println!("\x1b]11;#2E3440\x07");
     // set up music
-    it2play_rs::load_bytes(Vec::from(include_bytes!("../cmdjewel.it")), it2play_rs::IT2Driver::HQ);
+    it2play_rs::load_bytes(
+        Vec::from(include_bytes!("../cmdjewel.it")),
+        it2play_rs::IT2Driver::HQ,
+    );
     let stream = it2play_rs::generate_stream();
     stream.play().unwrap();
     it2play_rs::play(0);
