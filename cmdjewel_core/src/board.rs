@@ -9,6 +9,7 @@ use crate::constants::*;
 use crate::gems::*;
 
 /// Configuring cmdjewel boards (for different gamemodes)
+#[derive(Copy, Clone)]
 pub enum Gamemode {
     CLASSIC,
     ZEN
