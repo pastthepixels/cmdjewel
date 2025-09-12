@@ -54,7 +54,7 @@ pub fn show_menu_main(s: &mut Cursive) {
     s.pop_layer();
     // Soundtrack
     it2play_rs::play(0x02);
-    it2play_rs::set_global_volume((config::get_music_vol() * 128.) as u16);
+    it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
     // Creates a button list
     let button_classic = gamemode_btn!(strings::CLASSIC, strings::CLASSIC_DESC, |s| {
         show_game(s, BoardConfig::new_classic());
@@ -113,7 +113,7 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     s.pop_layer();
     // Soundtrack
     it2play_rs::play(0x0D);
-    it2play_rs::set_global_volume((config::get_music_vol() * 128.) as u16);
+    it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
     let name = config.name.clone();
     // Creates the layout for the dialog
     let layout = LinearLayout::vertical()

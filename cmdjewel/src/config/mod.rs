@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::Read;
-use cmdjewel_core::board::{Board, BoardConfig};
+use cmdjewel_core::board::{Board, BoardConfig, Gamemode};
 use cmdjewel_core::gems::Gem;
 
 pub mod data;
@@ -33,11 +33,6 @@ pub fn load_config() -> data::Config {
     }
 }
 
-/// Loads a config file and gets music_vol (or 1 by default).
-pub fn get_music_vol() -> f32 {
-    load_config().settings.music_vol
-}
-
 /// Saves a board to an existing Save. Requires get_save() to return a valid save
 pub fn save_board(board: &Board, is_game_over: bool) {
     // Load the config (or the default config)
@@ -49,12 +44,10 @@ pub fn save_board(board: &Board, is_game_over: bool) {
         None
     };
     // Update the save, store
-    // TODO: hack to determine zen mode/classic mode. implement boardconfig::gamemode : enum
-    if board.config_ref().infinite {
-        cfg.save.zen = gs;
-    } else {
-        cfg.save.classic = gs;
-    }
+    match board.config_ref().gamemode {
+        Gamemode::ZEN => cfg.save.zen = gs,
+        Gamemode::CLASSIC => cfg.save.classic = gs
+    };
     // Write to config file
     if let Some(dir) = dirs::config_local_dir() {
         let dir = dir.join("cmdjewel/config.toml"); // TODO: string constant
@@ -62,17 +55,14 @@ pub fn save_board(board: &Board, is_game_over: bool) {
     }
 }
 
-
 /// Creates a new Board. If a save exists for its gamemode, loads the save. Otherwise, creates a new Board.
 pub fn board(config: BoardConfig) -> Board {
     // Load the config (or the default config)
     let cfg = load_config();
     // Get game save
-    // TODO: hack to determine zen mode/classic mode. implement boardconfig::gamemode : enum
-    let gs = if config.infinite {
-        cfg.save.zen
-    } else {
-        cfg.save.classic
+    let gs = match config.gamemode {
+        Gamemode::ZEN => cfg.save.zen,
+        Gamemode::CLASSIC => cfg.save.classic
     };
     // Create Board
     if let Some(save) = gs {
