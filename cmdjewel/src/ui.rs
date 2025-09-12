@@ -12,6 +12,7 @@ use cursive::views::{
 };
 use cursive::Cursive;
 use crate::config;
+use crate::config::save_board;
 
 /// Creates a vertical spacer of size $size, or 1 by default
 macro_rules! spacer {
@@ -47,6 +48,9 @@ macro_rules! gamemode_btn {
 /// Shows the main menu, where gamemodes can be selected.
 /// It's a remake of a combination of Bejeweled 3's "Play" screen and its gamemode selector.
 pub fn show_menu_main(s: &mut Cursive) {
+    // If a game exists, save it
+    s.call_on_name("board", |b: &mut BoardView| { save_board(&b.board, false)}).unwrap_or_default();
+    // Remove top layer
     s.pop_layer();
     // Soundtrack
     it2play_rs::play(0x02);
@@ -205,7 +209,11 @@ pub fn init_commands(s: &mut Cursive) {
                 stream.play().unwrap();
             }
             // Vim keys
-            else if command == "q" || command == "qa" || command == "q!" || command == "qa!" {
+            else if command == "q" || command == "qa" { // Save and quit
+                // If a game exists, save it
+                s.call_on_name("board", |b: &mut BoardView| { save_board(&b.board, false) }).unwrap_or_default();
+                s.quit();
+            } else if command == "q!" || command == "qa!" { // Force quit
                 s.quit();
             } else if command == "h" || command == "hint" {
                 s.call_on_name("board", |view: &mut BoardView| view.hint());

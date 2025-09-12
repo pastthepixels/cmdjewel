@@ -1,5 +1,5 @@
 use crate::animations::{AnimationView, AnimationType, AnimationDetails};
-use crate::{constants, ui};
+use crate::{config, constants, ui};
 use cmdjewel_core::board::{Board, BoardConfig};
 use cmdjewel_core::point;
 use cmdjewel_core::point::Point;
@@ -11,6 +11,7 @@ use cursive::view::CannotFocus;
 use cursive::views::{Dialog, ProgressBar, TextView};
 use cursive::{Printer, Vec2};
 use cmdjewel_core::gems::Gem;
+use crate::config::save_board;
 use crate::constants::strings;
 
 /// Cursor modes
@@ -29,7 +30,7 @@ impl std::fmt::Display for CursorMode {
 }
 
 pub struct BoardView {
-    board: Board,
+    pub(crate) board: Board,
     has_focus: bool,
     animations: Vec<AnimationDetails>,
     pub cursor_mode: CursorMode,
@@ -40,7 +41,7 @@ pub struct BoardView {
 impl BoardView {
     pub fn new(config: BoardConfig) -> Self {
         BoardView {
-            board: Board::new(config),
+            board: config::board(config),
             has_focus: false,
             animations: Vec::new(),
             cursor_mode: CursorMode::Normal,
@@ -370,7 +371,10 @@ impl cursive::view::View for BoardView {
                     // Explodes if applicable
                     if !is_valid {
                         let data = s
-                            .call_on_name("board", |b: &mut BoardView| b.board.as_ref().to_vec())
+                            .call_on_name("board", |b: &mut BoardView| {
+                                save_board(&b.board, true); // Clear game save
+                                b.board.as_ref().to_vec() // Return board as vec
+                            })
                             .unwrap();
                         s.screen_mut().add_fullscreen_layer(
                             AnimationView::new(

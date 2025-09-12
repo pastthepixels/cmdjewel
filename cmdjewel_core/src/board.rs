@@ -2,7 +2,7 @@
 
 use rand::seq::SliceRandom;
 
-use crate::point::{Point, Direction};
+use crate::point::{Direction, Point};
 
 use crate::constants::*;
 
@@ -59,7 +59,19 @@ impl Board {
         }
     }
 
-    pub fn from_data(data: [Gem; 64]) -> Self {
+    pub fn new_controlled(config: BoardConfig, data: [Gem; 64], score: u32, level: u8, level_progress: f32) -> Self {
+        Board {
+            data,
+            buffer: [Gem::Empty; 64],
+            cursor: Point(0, 0),
+            score,
+            level,
+            level_progress,
+            config,
+        }
+    }
+
+    fn from_data(data: [Gem; 64]) -> Self {
         Board {
             data,
             buffer: [Gem::Empty; 64],
@@ -570,14 +582,14 @@ impl Board {
     pub fn get_cursor(&self) -> Point<usize> {
         self.cursor
     }
-    
+
     /// Gets the destination of a swap, given the cursor and a destination
     pub fn get_destination(&self, direction: &Direction) -> Point<usize> {
         self.get_destination_from(self.cursor, direction)
     }
-    
+
     /// Gets the destination of a swap, given a point and direction
-    pub fn get_destination_from(&self, from: Point<usize>, direction: &Direction) -> Point<usize> { 
+    pub fn get_destination_from(&self, from: Point<usize>, direction: &Direction) -> Point<usize> {
         match direction {
             Direction::Left => from - Point(1, 0),
             Direction::Right => from + Point(1, 0),
