@@ -9,9 +9,15 @@ use crate::constants::*;
 use crate::gems::*;
 
 /// Configuring cmdjewel boards (for different gamemodes)
+pub enum Gamemode {
+    CLASSIC,
+    ZEN
+}
+
 pub struct BoardConfig {
     pub infinite: bool,
     pub name: String,
+    pub gamemode: Gamemode
 }
 
 impl BoardConfig {
@@ -19,6 +25,7 @@ impl BoardConfig {
         BoardConfig {
             infinite: false,
             name: "classic".into(),
+            gamemode: Gamemode::CLASSIC
         }
     }
 
@@ -26,6 +33,7 @@ impl BoardConfig {
         BoardConfig {
             infinite: true,
             name: "zen".into(),
+            gamemode: Gamemode::ZEN
         }
     }
 }
