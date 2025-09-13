@@ -49,7 +49,7 @@ fn main() {
     let stream = it2play_rs::generate_stream();
     stream.play().unwrap();
     it2play_rs::play(0);
-    it2play_rs::set_global_volume((config::get_music_vol() * 128.) as u16);
+    it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
     siv.set_user_data(stream);
     // show the start screen
     ui::show_menu_start(&mut siv);
