@@ -49,7 +49,7 @@ macro_rules! gamemode_btn {
 /// It's a remake of a combination of Bejeweled 3's "Play" screen and its gamemode selector.
 pub fn show_menu_main(s: &mut Cursive) {
     // If a game exists, save it
-    s.call_on_name("board", |b: &mut BoardView| { save_board(&b.board, false)}).unwrap_or_default();
+    s.call_on_name("board", |b: &mut BoardView| { if b.board.is_valid() { save_board(&b.board, false) } }).unwrap_or_default();
     // Remove top layer
     s.pop_layer();
     // Soundtrack
