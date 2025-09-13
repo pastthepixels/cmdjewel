@@ -1,4 +1,5 @@
 mod animations;
+mod config;
 mod constants;
 mod multiline_button;
 mod ui;
@@ -40,7 +41,7 @@ fn main() {
     // that gets picked up by your terminal emulator. XTerm (and other emulators) implemented this
     // as a command to change the background.
     println!("\x1b]11;#2E3440\x07");
-    // set up music
+    // Set up music
     it2play_rs::load_bytes(
         Vec::from(include_bytes!("../cmdjewel.it")),
         it2play_rs::IT2Driver::HQ,
@@ -48,12 +49,12 @@ fn main() {
     let stream = it2play_rs::generate_stream();
     stream.play().unwrap();
     it2play_rs::play(0);
+    it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
     siv.set_user_data(stream);
     // show the start screen
     ui::show_menu_start(&mut siv);
     // set up commands
     ui::init_commands(&mut siv);
-    siv.add_global_callback('`', cursive::Cursive::toggle_debug_console);
     // Set the refresh rate to 30 FPS and run
     siv.set_autorefresh(true);
     siv.run();

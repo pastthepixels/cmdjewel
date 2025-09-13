@@ -11,6 +11,8 @@ use cursive::views::{
     ProgressBar, TextView,
 };
 use cursive::Cursive;
+use crate::config;
+use crate::config::save_board;
 
 /// Creates a vertical spacer of size $size, or 1 by default
 macro_rules! spacer {
@@ -46,9 +48,13 @@ macro_rules! gamemode_btn {
 /// Shows the main menu, where gamemodes can be selected.
 /// It's a remake of a combination of Bejeweled 3's "Play" screen and its gamemode selector.
 pub fn show_menu_main(s: &mut Cursive) {
+    // If a game exists, save it
+    s.call_on_name("board", |b: &mut BoardView| { if b.board.is_valid() { save_board(&b.board, false) } }).unwrap_or_default();
+    // Remove top layer
     s.pop_layer();
     // Soundtrack
     it2play_rs::play(0x02);
+    it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
     // Creates a button list
     let button_classic = gamemode_btn!(strings::CLASSIC, strings::CLASSIC_DESC, |s| {
         show_game(s, BoardConfig::new_classic());
@@ -107,6 +113,7 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     s.pop_layer();
     // Soundtrack
     it2play_rs::play(0x0D);
+    it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
     let name = config.name.clone();
     // Creates the layout for the dialog
     let layout = LinearLayout::vertical()
@@ -202,7 +209,11 @@ pub fn init_commands(s: &mut Cursive) {
                 stream.play().unwrap();
             }
             // Vim keys
-            else if command == "q" || command == "qa" || command == "q!" || command == "qa!" {
+            else if command == "q" || command == "qa" { // Save and quit
+                // If a game exists, save it
+                s.call_on_name("board", |b: &mut BoardView| { save_board(&b.board, false) }).unwrap_or_default();
+                s.quit();
+            } else if command == "q!" || command == "qa!" { // Force quit
                 s.quit();
             } else if command == "h" || command == "hint" {
                 s.call_on_name("board", |view: &mut BoardView| view.hint());
