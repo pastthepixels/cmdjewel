@@ -1,9 +1,14 @@
 use std::fs::File;
 use std::io::Read;
+use serde::Serialize;
+use toml::ser::Buffer;
+use toml::Serializer;
+use toml_edit::visit_mut::VisitMut;
 use cmdjewel_core::board::{Board, BoardConfig, Gamemode};
 use cmdjewel_core::gems::Gem;
 
 pub mod data;
+mod hacks;
 
 /// Loads a config file and returns a corresponding Config struct.
 /// If:
@@ -39,7 +44,7 @@ pub fn save_board(board: &Board, is_game_over: bool) {
     let mut cfg = load_config();
     // Create a game save from the board
     let gs = if !is_game_over {
-        Some(data::GameSave::new(&board)   )
+        Some(data::GameSave::new(&board))
     } else {
         None
     };
@@ -51,7 +56,10 @@ pub fn save_board(board: &Board, is_game_over: bool) {
     // Write to config file
     if let Some(dir) = dirs::config_local_dir() {
         let dir = dir.join("cmdjewel/config.toml"); // TODO: string constant
-        std::fs::write(dir, toml::to_string_pretty(&cfg).unwrap()).unwrap(); // TODO: unwraps, is this guaranteed to succeed?
+        let mut doc = toml_edit::ser::to_document(&cfg).unwrap();
+        let mut visitor = hacks::HackyFormatter;
+        visitor.visit_document_mut(&mut doc);
+        std::fs::write(dir, doc.to_string()).unwrap(); // TODO: unwraps, is this guaranteed to succeed?
     }
 }
 
