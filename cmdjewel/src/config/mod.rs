@@ -6,6 +6,7 @@ use toml::Serializer;
 use toml_edit::visit_mut::VisitMut;
 use cmdjewel_core::board::{Board, BoardConfig, Gamemode};
 use cmdjewel_core::gems::Gem;
+use crate::constants;
 
 pub mod data;
 mod hacks;
@@ -18,14 +19,14 @@ mod hacks;
 pub fn load_config() -> data::Config {
     if let Some(dir) = dirs::config_local_dir() {
         // Load cmdjewel config file
-        let dir = dir.join("cmdjewel/config.toml"); // TODO: string constant
+        let dir = dir.join(constants::CONFIG_PATH);
         // If it exists, read it.
         if dir.exists() {
             let file = File::open(dir);
             let mut data = String::new();
             file.unwrap()
                 .read_to_string(&mut data)
-                .expect("cmdjewel config file exists, but can't be read");
+                .unwrap();
             // Reads the config file, returns data::Config::default() if it can't deserialize
             toml::from_str::<data::Config>(&data).unwrap_or(data::Config::default())
         } else {
@@ -55,11 +56,11 @@ pub fn save_board(board: &Board, is_game_over: bool) {
     };
     // Write to config file
     if let Some(dir) = dirs::config_local_dir() {
-        let dir = dir.join("cmdjewel/config.toml"); // TODO: string constant
+        let dir = dir.join(constants::CONFIG_PATH);
         let mut doc = toml_edit::ser::to_document(&cfg).unwrap();
         let mut visitor = hacks::HackyFormatter;
         visitor.visit_document_mut(&mut doc);
-        std::fs::write(dir, doc.to_string()).unwrap(); // TODO: unwraps, is this guaranteed to succeed?
+        std::fs::write(dir, doc.to_string()).unwrap();
     }
 }
 

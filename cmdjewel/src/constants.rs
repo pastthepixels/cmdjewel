@@ -1,3 +1,5 @@
+pub const CONFIG_PATH: &str = "cmdjewel/config.toml";
+
 pub mod strings {
     pub const CMDJEWEL_LOGO: &str = "
                ,   .                _.
