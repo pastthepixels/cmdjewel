@@ -1,6 +1,9 @@
 use crate::animations::{AnimationView, AnimationType, AnimationDetails};
 use crate::{config, constants, ui};
+use crate::config::save_board;
+use crate::constants::strings;
 use cmdjewel_core::board::{Board, BoardConfig};
+use cmdjewel_core::gems::Gem;
 use cmdjewel_core::point;
 use cmdjewel_core::point::Point;
 use cursive::direction::Direction;
@@ -10,9 +13,6 @@ use cursive::traits::Resizable;
 use cursive::view::CannotFocus;
 use cursive::views::{Dialog, ProgressBar, TextView};
 use cursive::{Printer, Vec2};
-use cmdjewel_core::gems::Gem;
-use crate::config::save_board;
-use crate::constants::strings;
 
 /// Cursor modes
 pub enum CursorMode {
@@ -99,8 +99,8 @@ impl BoardView {
                     if animation.duration % 2 == 0 {
                         animation.animation_type = AnimationType::Blink(!s)
                     }
-                },
-                _ => ()
+                }
+                _ => (),
             }
             // Count down all animations
             if animation.duration != 0 {
@@ -225,7 +225,8 @@ impl cursive::view::View for BoardView {
             self.animations.iter().for_each(|anim| {
                 if anim.point.0 == point.0
                     && anim.point.1 == point.1
-                    && (anim.animation_type == AnimationType::Highlight || anim.animation_type == AnimationType::Blink(true))
+                    && (anim.animation_type == AnimationType::Highlight
+                        || anim.animation_type == AnimationType::Blink(true))
                 {
                     color = color.invert();
                 }
@@ -269,14 +270,20 @@ impl cursive::view::View for BoardView {
         }
         // Handle events
         match event {
-            Event::Mouse { offset, position, event } => {
+            Event::Mouse {
+                offset,
+                position,
+                event,
+            } => {
                 // NOTE: 3 is some constant that represents the width of each gem
-                let point : Point<usize> = Point((position.x - offset.x) / 3, position.y - offset.y);
+                let point: Point<usize> = Point((position.x - offset.x) / 3, position.y - offset.y);
                 static mut PREV: Point<usize> = Point(0, 0);
                 match event {
                     MouseEvent::Press(_) => {
                         if point.0 < 8 && point.1 < 8 {
-                            unsafe{ PREV = point; }
+                            unsafe {
+                                PREV = point;
+                            }
                             self.board.set_cursor(point);
                             self.cursor_mode = CursorMode::Swap;
                             EventResult::Consumed(None)
@@ -285,13 +292,23 @@ impl cursive::view::View for BoardView {
                         }
                     }
                     MouseEvent::Release(_) => unsafe {
-                        let dir = if (PREV.0 as i32 - point.0 as i32) < 0 {
+                        let px = (position.x as i32 - offset.x as i32) / 3; // Hack to get around swapping right - recomputing point.x as an i32
+                        let (u, d, l, r) = {
+                            (
+                                (PREV.1 as i32 - point.1 as i32),
+                                -(PREV.1 as i32 - point.1 as i32),
+                                (PREV.0 as i32 - px as i32),
+                                -(PREV.0 as i32 - px as i32),
+                            )
+                        };
+                        let max = u.max(d).max(l).max(r);
+                        let dir = if max == r {
                             Some(point::Direction::Right)
-                        } else if (PREV.0 - point.0) > 0 {
+                        } else if max == l {
                             Some(point::Direction::Left)
-                        } else if (PREV.1 as i32 - point.1 as i32) < 0 {
+                        } else if max == d {
                             Some(point::Direction::Down)
-                        } else if (PREV.1 - point.1) > 0 {
+                        } else if max == u {
                             Some(point::Direction::Up)
                         } else {
                             None
@@ -303,12 +320,10 @@ impl cursive::view::View for BoardView {
                             self.cursor_mode = CursorMode::Normal;
                             EventResult::Ignored
                         }
-                    }
-                    _ => {
-                        EventResult::Ignored
-                    }
+                    },
+                    _ => EventResult::Ignored,
                 }
-            },
+            }
             Event::Refresh => {
                 let mut initial_level = self.board.get_level() + 1;
                 // Updates animations
@@ -394,8 +409,11 @@ impl cursive::view::View for BoardView {
                             .call_on_name("board", |b: &mut BoardView| b.board.as_ref().to_vec())
                             .unwrap();
                         s.screen_mut().add_fullscreen_layer(
-                            AnimationView::new(crate::animations::warp::Warp::new(data.len(), 1.0), data)
-                                .full_screen(),
+                            AnimationView::new(
+                                crate::animations::warp::Warp::new(data.len(), 1.0),
+                                data,
+                            )
+                            .full_screen(),
                         )
                     }
                 })
