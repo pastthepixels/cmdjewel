@@ -22,7 +22,7 @@ If you notice everything's too small, try changing your terminal's font size. Th
 - [x] MacOS export
 - [ ] Music/SFX slider
 - [ ] Settings page accessible in-game/main menu
-- [ ] Saving/loading from config files (TOML probably somewhere in ~/.config)
+- [X] Saving/loading from config files (TOML probably somewhere in ~/.config)
 - [X] Better title screen logo
 - [ ] Animated title screen background
 - [ ] Animation from moving from the title screen to main menu
