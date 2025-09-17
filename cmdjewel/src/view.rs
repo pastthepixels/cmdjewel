@@ -1,7 +1,7 @@
-use crate::animations::{AnimationView, AnimationType, AnimationDetails};
-use crate::{config, constants, ui};
+use crate::animations::{AnimationDetails, AnimationType, AnimationView};
 use crate::config::save_board;
 use crate::constants::strings;
+use crate::{config, constants, ui};
 use cmdjewel_core::board::{Board, BoardConfig};
 use cmdjewel_core::gems::Gem;
 use cmdjewel_core::point;
@@ -33,6 +33,7 @@ pub struct BoardView {
     pub(crate) board: Board,
     has_focus: bool,
     animations: Vec<AnimationDetails>,
+    cursor_down: Point<usize>,
     pub cursor_mode: CursorMode,
     pub autoplay: bool,
     pub animations_enabled: bool,
@@ -47,6 +48,7 @@ impl BoardView {
             cursor_mode: CursorMode::Normal,
             autoplay: false,
             animations_enabled: true,
+            cursor_down: Point(0, 0),
         }
     }
 
@@ -277,13 +279,10 @@ impl cursive::view::View for BoardView {
             } => {
                 // NOTE: 3 is some constant that represents the width of each gem
                 let point: Point<usize> = Point((position.x - offset.x) / 3, position.y - offset.y);
-                static mut PREV: Point<usize> = Point(0, 0);
                 match event {
                     MouseEvent::Press(_) => {
                         if point.0 < 8 && point.1 < 8 {
-                            unsafe {
-                                PREV = point;
-                            }
+                            self.cursor_down = point;
                             self.board.set_cursor(point);
                             self.cursor_mode = CursorMode::Swap;
                             EventResult::Consumed(None)
@@ -291,18 +290,18 @@ impl cursive::view::View for BoardView {
                             EventResult::Ignored
                         }
                     }
-                    MouseEvent::Release(_) => unsafe {
+                    MouseEvent::Release(_) => {
                         let px = (position.x as i32 - offset.x as i32) / 3; // Hack to get around swapping right - recomputing point.x as an i32
                         let (u, d, l, r) = {
                             (
-                                (PREV.1 as i32 - point.1 as i32),
-                                -(PREV.1 as i32 - point.1 as i32),
-                                (PREV.0 as i32 - px as i32),
-                                -(PREV.0 as i32 - px as i32),
+                                (self.cursor_down.1 as i32 - point.1 as i32),
+                                -(self.cursor_down.1 as i32 - point.1 as i32),
+                                (self.cursor_down.0 as i32 - px as i32),
+                                -(self.cursor_down.0 as i32 - px as i32),
                             )
                         };
                         let max = u.max(d).max(l).max(r);
-                        let dir = if max == r {
+                        let mut dir = if max == r {
                             Some(point::Direction::Right)
                         } else if max == l {
                             Some(point::Direction::Left)
@@ -313,6 +312,9 @@ impl cursive::view::View for BoardView {
                         } else {
                             None
                         };
+                        if self.cursor_down.0 == point.0 && self.cursor_down.1 == point.1 {
+                            dir = None;
+                        }
                         if let Some(d) = dir {
                             self.attempt_swap(d);
                             EventResult::Consumed(None)
@@ -320,7 +322,7 @@ impl cursive::view::View for BoardView {
                             self.cursor_mode = CursorMode::Normal;
                             EventResult::Ignored
                         }
-                    },
+                    }
                     _ => EventResult::Ignored,
                 }
             }
