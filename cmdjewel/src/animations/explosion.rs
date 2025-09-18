@@ -1,8 +1,8 @@
-use cursive::Printer;
-use rand::Rng;
+use crate::animations::{Animation, EXPLOSION_GRAVITY};
 use cmdjewel_core::gems::Gem;
 use cmdjewel_core::point::Point;
-use crate::animations::{Animation, EXPLOSION_GRAVITY};
+use cursive::Printer;
+use rand::Rng;
 
 /// Explosion animation.
 pub struct Explosion {
@@ -19,7 +19,12 @@ impl Explosion {
         Explosion {
             keyframe: 0,
             velocities: (0..num_gems)
-                .map(|_| (rng.random_range(-force..force), rng.random_range(-force..force)))
+                .map(|_| {
+                    (
+                        rng.random_range(-force..force),
+                        rng.random_range(-force..force),
+                    )
+                })
                 .collect(),
             positions: Self::calculate_positions(num_gems),
         }

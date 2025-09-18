@@ -35,13 +35,11 @@ pub struct GameSave {
 impl std::default::Default for Config {
     fn default() -> Self {
         Config {
-            settings: Settings {
-                music_vol: 1.0
-            },
+            settings: Settings { music_vol: 1.0 },
             save: Save {
                 classic: None,
-                zen: None
-            }
+                zen: None,
+            },
         }
     }
 }

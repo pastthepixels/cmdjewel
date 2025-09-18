@@ -1,5 +1,5 @@
-use toml_edit::{Item, KeyMut, Value};
 use toml_edit::visit_mut::{visit_table_like_kv_mut, VisitMut};
+use toml_edit::{Item, KeyMut, Value};
 
 pub struct HackyFormatter;
 

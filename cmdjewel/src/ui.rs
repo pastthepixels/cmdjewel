@@ -1,9 +1,11 @@
-use cpal::Stream;
-use cpal::traits::StreamTrait;
-use cmdjewel_core::board::BoardConfig;
+use crate::config;
+use crate::config::save_board;
 use crate::constants::strings;
 use crate::multiline_button::Button;
 use crate::view::BoardView;
+use cmdjewel_core::board::BoardConfig;
+use cpal::traits::StreamTrait;
+use cpal::Stream;
 use cursive::event::{Callback, Event, EventResult};
 use cursive::view::{Margins, Nameable, Resizable};
 use cursive::views::{
@@ -11,8 +13,6 @@ use cursive::views::{
     ProgressBar, TextView,
 };
 use cursive::Cursive;
-use crate::config;
-use crate::config::save_board;
 
 /// Creates a vertical spacer of size $size, or 1 by default
 macro_rules! spacer {
@@ -49,7 +49,12 @@ macro_rules! gamemode_btn {
 /// It's a remake of a combination of Bejeweled 3's "Play" screen and its gamemode selector.
 pub fn show_menu_main(s: &mut Cursive) {
     // If a game exists, save it
-    s.call_on_name("board", |b: &mut BoardView| { if b.board.is_valid() { save_board(&b.board, false) } }).unwrap_or_default();
+    s.call_on_name("board", |b: &mut BoardView| {
+        if b.board.is_valid() {
+            save_board(&b.board, false)
+        }
+    })
+    .unwrap_or_default();
     // Remove top layer
     s.pop_layer();
     // Soundtrack
@@ -185,7 +190,7 @@ pub fn init_commands(s: &mut Cursive) {
                 s.call_on_name("board", |view: &mut BoardView| {
                     view.animations_enabled = !view.animations_enabled;
                 });
-            } 
+            }
             // Going to the main menu
             else if command == "main" || command == "m" {
                 show_menu_main(s);
@@ -209,11 +214,14 @@ pub fn init_commands(s: &mut Cursive) {
                 stream.play().unwrap();
             }
             // Vim keys
-            else if command == "q" || command == "qa" { // Save and quit
+            else if command == "q" || command == "qa" {
+                // Save and quit
                 // If a game exists, save it
-                s.call_on_name("board", |b: &mut BoardView| { save_board(&b.board, false) }).unwrap_or_default();
+                s.call_on_name("board", |b: &mut BoardView| save_board(&b.board, false))
+                    .unwrap_or_default();
                 s.quit();
-            } else if command == "q!" || command == "qa!" { // Force quit
+            } else if command == "q!" || command == "qa!" {
+                // Force quit
                 s.quit();
             } else if command == "h" || command == "hint" {
                 s.call_on_name("board", |view: &mut BoardView| view.hint());

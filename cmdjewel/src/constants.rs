@@ -29,9 +29,12 @@ pub mod strings {
         "Command not found. Available commands are main/m, play/p [classic/zen], q[a/!], hint/h";
     pub const KEY_NOT_FOUND: &str =
         "Key not recognized. Use the arrow keys to move and the enter key to enter SWAP mode.";
-    
+
     pub fn game_over(score: u32, level: u8) -> String {
-        format!("Game over! You scored {} points and got to level {}.", score, level)
+        format!(
+            "Game over! You scored {} points and got to level {}.",
+            score, level
+        )
     }
 }
 

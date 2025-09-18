@@ -1,4 +1,13 @@
-use cursive::{align::HAlign, direction::Direction, event::*, Rect, style::PaletteStyle, utils::markup::StyledString, view::{CannotFocus, View}, Cursive, Printer, Vec2, impl_enabled};
+use cursive::{
+    align::HAlign,
+    direction::Direction,
+    event::*,
+    impl_enabled,
+    style::PaletteStyle,
+    utils::markup::StyledString,
+    view::{CannotFocus, View},
+    Cursive, Printer, Rect, Vec2,
+};
 
 /// Simple text label with a callback when `<Enter>` is pressed.
 ///
@@ -116,7 +125,7 @@ impl Button {
 
     fn req_size(&self) -> Vec2 {
         let labels = self.label.source().split("\n");
-        let max : usize = labels.clone().map(|x| x.chars().count()).max().unwrap();
+        let max: usize = labels.clone().map(|x| x.chars().count()).max().unwrap();
         Vec2::new(max, labels.count())
     }
 
@@ -142,9 +151,8 @@ impl View for Button {
             PaletteStyle::Primary
         };
 
-
         let offset = HAlign::Center.get_offset(self.req_size().x, printer.size.x);
-        
+
         // eprintln!("Button style: {style:?}");
         printer.with_style(style, |printer| {
             let lines = self.label.source().split("\n").collect::<Vec<&str>>();

@@ -12,13 +12,13 @@ use crate::gems::*;
 #[derive(Copy, Clone)]
 pub enum Gamemode {
     CLASSIC,
-    ZEN
+    ZEN,
 }
 
 pub struct BoardConfig {
     pub infinite: bool,
     pub name: String,
-    pub gamemode: Gamemode
+    pub gamemode: Gamemode,
 }
 
 impl BoardConfig {
@@ -26,7 +26,7 @@ impl BoardConfig {
         BoardConfig {
             infinite: false,
             name: "classic".into(),
-            gamemode: Gamemode::CLASSIC
+            gamemode: Gamemode::CLASSIC,
         }
     }
 
@@ -34,7 +34,7 @@ impl BoardConfig {
         BoardConfig {
             infinite: true,
             name: "zen".into(),
-            gamemode: Gamemode::ZEN
+            gamemode: Gamemode::ZEN,
         }
     }
 }
@@ -68,7 +68,13 @@ impl Board {
         }
     }
 
-    pub fn new_controlled(config: BoardConfig, data: [Gem; 64], score: u32, level: u8, level_progress: f32) -> Self {
+    pub fn new_controlled(
+        config: BoardConfig,
+        data: [Gem; 64],
+        score: u32,
+        level: u8,
+        level_progress: f32,
+    ) -> Self {
         Board {
             data,
             buffer: [Gem::Empty; 64],

@@ -1,9 +1,9 @@
-use cursive::Printer;
-use cursive::style::{Color, PaletteColor};
-use rand::Rng;
+use crate::animations::{Animation, WARP_KEYFRAMES, WARP_REPEL_DISTANCE};
 use cmdjewel_core::gems::Gem;
 use cmdjewel_core::point::Point;
-use crate::animations::{Animation, WARP_KEYFRAMES, WARP_REPEL_DISTANCE};
+use cursive::style::{Color, PaletteColor};
+use cursive::Printer;
+use rand::Rng;
 
 /// Warp animation.
 pub struct Warp {
@@ -21,7 +21,12 @@ impl Warp {
         Warp {
             keyframe: 0,
             velocities: (0..num_gems)
-                .map(|_| Point(rng.random_range(-force..force), rng.random_range(-force..force)))
+                .map(|_| {
+                    Point(
+                        rng.random_range(-force..force),
+                        rng.random_range(-force..force),
+                    )
+                })
                 .collect(),
             positions: Self::calculate_positions(num_gems),
             circles: Vec::new(),
@@ -45,15 +50,15 @@ impl Warp {
                 cursive::Vec2::new((origin.0 - y) as usize, (origin.1 - x) as usize),
                 cursive::Vec2::new((origin.0 - y) as usize, (origin.1 + x) as usize),
             ]
-                .iter()
-                .for_each(|vec| {
-                    if vec.x != 0 && vec.y != 0 {
-                        printer.with_color(
-                            cursive::theme::ColorStyle::new(color, PaletteColor::Background),
-                            |printer| printer.print(vec, "•"),
-                        );
-                    }
-                });
+            .iter()
+            .for_each(|vec| {
+                if vec.x != 0 && vec.y != 0 {
+                    printer.with_color(
+                        cursive::theme::ColorStyle::new(color, PaletteColor::Background),
+                        |printer| printer.print(vec, "•"),
+                    );
+                }
+            });
             // Increments
             y += 1.0;
             t1 += y;

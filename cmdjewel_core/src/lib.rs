@@ -1,4 +1,4 @@
 pub mod board;
-pub mod point;
-pub mod gems;
 mod constants;
+pub mod gems;
+pub mod point;
