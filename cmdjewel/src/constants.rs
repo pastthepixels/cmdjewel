@@ -30,6 +30,10 @@ pub mod strings {
     pub const KEY_NOT_FOUND: &str =
         "Key not recognized. Use the arrow keys to move and the enter key to enter SWAP mode.";
 
+    pub fn first_save(path: &str) -> String {
+        format!("cmdjewel just created a save file at {}. When you return, it'll load your game from that path.", path)
+    }
+
     pub fn game_over(score: u32, level: u8) -> String {
         format!(
             "Game over! You scored {} points and got to level {}.",

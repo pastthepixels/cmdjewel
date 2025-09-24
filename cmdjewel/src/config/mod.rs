@@ -3,6 +3,7 @@ use cmdjewel_core::board::{Board, BoardConfig, Gamemode};
 use cmdjewel_core::gems::Gem;
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
 use toml_edit::visit_mut::VisitMut;
 
 pub mod data;
@@ -34,6 +35,15 @@ pub fn load_config() -> data::Config {
     }
 }
 
+/// Returns the full path of a config file
+pub fn config_path() -> Option<PathBuf> {
+    if let Some(dir) = dirs::config_local_dir() {
+        Some(dir.join(constants::CONFIG_PATH))
+    } else {
+        None
+    }
+}
+
 /// Saves a board to an existing Save. Requires get_save() to return a valid save
 pub fn save_board(board: &Board, is_game_over: bool) {
     // Load the config (or the default config)
@@ -54,13 +64,19 @@ pub fn save_board(board: &Board, is_game_over: bool) {
         let dir = dir.join(constants::CONFIG_PATH);
         let mut doc = toml_edit::ser::to_document(&cfg).unwrap();
         let mut visitor = hacks::HackyFormatter;
+        // Write save
+        {
+            let mut folder = dir.clone();
+            folder.pop();
+            std::fs::create_dir(folder).unwrap_or_default();
+        }
         visitor.visit_document_mut(&mut doc);
         std::fs::write(dir, doc.to_string()).unwrap();
     }
 }
 
 /// Creates a new Board. If a save exists for its gamemode, loads the save. Otherwise, creates a new Board.
-pub fn board(config: BoardConfig) -> Board {
+pub fn new_board(config: BoardConfig) -> Board {
     // Load the config (or the default config)
     let cfg = load_config();
     // Get game save

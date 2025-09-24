@@ -49,12 +49,19 @@ macro_rules! gamemode_btn {
 /// It's a remake of a combination of Bejeweled 3's "Play" screen and its gamemode selector.
 pub fn show_menu_main(s: &mut Cursive) {
     // If a game exists, save it
-    s.call_on_name("board", |b: &mut BoardView| {
-        if b.board.is_valid() {
-            save_board(&b.board, false)
+    if let Some(p) = config::config_path() {
+        // It's possible to get the config path e.g. the OS config path exists
+        if !p.exists() {
+            // OS config path exists, but /cmdjewel doesn't.
+            s.add_layer(Dialog::info(strings::first_save(
+                p.as_os_str().to_str().unwrap(),
+            )));
         }
-    })
-    .unwrap_or_default();
+        s.call_on_name("board", |b: &mut BoardView| {
+            save_board(&b.board, !b.board.is_valid())
+        })
+        .unwrap_or_default();
+    }
     // Remove top layer
     s.pop_layer();
     // Soundtrack
