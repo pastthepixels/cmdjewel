@@ -1,7 +1,6 @@
 mod animations;
 mod config;
 mod constants;
-mod multiline_button;
 mod ui;
 mod view;
 

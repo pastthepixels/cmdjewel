@@ -1,8 +1,7 @@
-use crate::config;
-use crate::config::save_board;
 use crate::constants::strings;
-use crate::multiline_button::Button;
+use crate::ui::multiline_button::Button;
 use crate::view::BoardView;
+use crate::{config, confirm, gamemode_btn, hspacer, vspacer};
 use cmdjewel_core::board::BoardConfig;
 use cpal::traits::StreamTrait;
 use cpal::Stream;
@@ -14,60 +13,8 @@ use cursive::views::{
 };
 use cursive::Cursive;
 
-/// Creates a vertical spacer of size $size, or 1 by default
-macro_rules! spacer {
-    () => {
-        spacer!(1)
-    };
-
-    ($size:expr) => {{
-        let n: usize = $size; // Force types to be unsigned integers
-        TextView::new("\n".repeat(n))
-    }};
-}
-
-/// Creates a horizontal spacer of size $size, or 1 by default
-macro_rules! hspacer {
-    () => {
-        spacer!(1)
-    };
-
-    ($size:expr) => {{
-        let n: usize = $size; // Force types to be unsigned integers
-        TextView::new(" ".repeat(n))
-    }};
-}
-
-/// Creates a confirmation dialog.
-macro_rules! confirm {
-    ($s:expr, $label:expr, $cb:expr) => {
-        $s.add_layer(
-            Dialog::around(TextView::new($label))
-                .title(strings::ARE_SURE)
-                .button(strings::YES, $cb)
-                .dismiss_button(strings::NO),
-        )
-    };
-}
-
-/// Creates a gamemode button for the main menu, that changes `about_gamemode` when focused.
-macro_rules! gamemode_btn {
-    ($label:expr, $desc:expr, $cb:expr) => {
-        FocusTracker::new(Button::new_raw(
-            "╭───────────╮\n│".to_string()
-                + format!("{: ^11}", $label).as_str()
-                + "│\n╰───────────╯",
-            $cb,
-        ))
-        .on_focus(|_| {
-            EventResult::Consumed(Some(Callback::from_fn(|s| {
-                s.call_on_name("about_gamemode", |view: &mut TextView| {
-                    view.set_content($desc)
-                });
-            })))
-        })
-    };
-}
+mod macros;
+mod multiline_button;
 
 /// Shows the main menu, where gamemodes can be selected.
 /// It's a remake of a combination of Bejeweled 3's "Play" screen and its gamemode selector.
@@ -80,7 +27,7 @@ pub fn show_menu_main(s: &mut Cursive) {
             save_path = Some(p.as_os_str().to_str().unwrap().to_string())
         }
         s.call_on_name("board", move |b: &mut BoardView| {
-            save_board(&b.board, !b.board.is_valid())
+            config::save_board(&b.board, !b.board.is_valid())
         })
         .unwrap_or_default();
     }
@@ -98,7 +45,7 @@ pub fn show_menu_main(s: &mut Cursive) {
     });
     let buttons = LinearLayout::vertical()
         .child(button_classic)
-        .child(spacer!())
+        .child(vspacer!())
         .child(button_zen);
     // Adds buttons in the main menu, and a descriptor of game modes (when hovered)
     s.add_layer(
@@ -140,11 +87,6 @@ pub fn show_menu_start(s: &mut Cursive) {
             ))
             .child(Button::new_raw(strings::PLAY, show_menu_main)),
     );
-
-    // s.reposition_layer(
-    //     cursive::views::LayerPosition::FromFront(0),
-    //     cursive::XY::absolute(s.screen_size() / 2 - (1, 0)),
-    // );
 }
 
 /// This starts the game given a BoardConfig (which decides game factors such as if it is in classic/zen mode)
@@ -202,6 +144,41 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     s.focus_name("board").unwrap();
 }
 
+/// Shows the settings dialog.
+pub fn show_settings(s: &mut Cursive) {
+    let settings = config::load_config().settings;
+    let mut slider = SliderView::horizontal(25); // TODO 25 is a constant
+    slider.set_value((settings.music_vol * (slider.get_max_value() - 1) as f32) as usize);
+    slider.set_on_change(|_, v| {
+        let mut cfg = config::load_config();
+        cfg.settings.music_vol = v as f32 / 24.; // TODO 24 is a constant; 25 - 1
+        config::save_config(&cfg);
+        it2play_rs::set_global_volume((cfg.settings.music_vol * 128.) as u16);
+    });
+    s.add_layer(
+        Dialog::around(
+            LinearLayout::vertical().child(
+                LinearLayout::horizontal()
+                    .child(TextView::new(strings::MUSIC_VOL))
+                    .child(hspacer!(2))
+                    .child(slider),
+            ),
+        )
+        .title(strings::SETTINGS)
+        .button(strings::RESET, |s| {
+            confirm!(s, strings::WARN_RESET, |s| {
+                config::reset_config();
+                s.pop_layer().unwrap();
+                s.pop_layer().unwrap();
+            })
+        })
+        .button(strings::BACK, |s| {
+            s.pop_layer().unwrap();
+        })
+        .padding(Margins::lrtb(1, 1, 1, 0)),
+    );
+}
+
 /// Initialises setting commands by creating a callback for the colon key
 pub fn init_commands(s: &mut Cursive) {
     s.add_global_callback(':', |s| {
@@ -251,8 +228,10 @@ pub fn init_commands(s: &mut Cursive) {
             else if command == "q" || command == "qa" {
                 // Save and quit
                 // If a game exists, save it
-                s.call_on_name("board", |b: &mut BoardView| save_board(&b.board, false))
-                    .unwrap_or_default();
+                s.call_on_name("board", |b: &mut BoardView| {
+                    config::save_board(&b.board, false)
+                })
+                .unwrap_or_default();
                 s.quit();
             } else if command == "q!" || command == "qa!" {
                 // Force quit
@@ -282,39 +261,4 @@ pub fn init_commands(s: &mut Cursive) {
                 .fixed_width(32),
         );
     });
-}
-
-/// Shows the settings dialog.
-pub fn show_settings(s: &mut Cursive) {
-    let settings = config::load_config().settings;
-    let mut slider = SliderView::horizontal(25); // TODO 25 is a constant
-    slider.set_value((settings.music_vol * (slider.get_max_value() - 1) as f32) as usize);
-    slider.set_on_change(|_, v| {
-        let mut cfg = config::load_config();
-        cfg.settings.music_vol = v as f32 / 24.; // TODO 24 is a constant; 25 - 1
-        config::save_config(&cfg);
-        it2play_rs::set_global_volume((cfg.settings.music_vol * 128.) as u16);
-    });
-    s.add_layer(
-        Dialog::around(
-            LinearLayout::vertical().child(
-                LinearLayout::horizontal()
-                    .child(TextView::new(strings::MUSIC_VOL))
-                    .child(hspacer!(2))
-                    .child(slider),
-            ),
-        )
-        .title(strings::SETTINGS)
-        .button(strings::RESET, |s| {
-            confirm!(s, strings::WARN_RESET, |s| {
-                config::reset_config();
-                s.pop_layer().unwrap();
-                s.pop_layer().unwrap();
-            })
-        })
-        .button(strings::BACK, |s| {
-            s.pop_layer().unwrap();
-        })
-        .padding(Margins::lrtb(1, 1, 1, 0)),
-    );
 }
