@@ -60,9 +60,15 @@ pub fn save_board(board: &Board, is_game_over: bool) {
         Gamemode::CLASSIC => cfg.save.classic = gs,
     };
     // Write to config file
+    save_config(&cfg);
+}
+
+/// Writes a Config struct to a config file.
+/// If the write fails, no exception is thrown. (TODO: probably throw one?)
+pub fn save_config(cfg: &data::Config) {
     if let Some(dir) = dirs::config_local_dir() {
         let dir = dir.join(constants::CONFIG_PATH);
-        let mut doc = toml_edit::ser::to_document(&cfg).unwrap();
+        let mut doc = toml_edit::ser::to_document(cfg).unwrap();
         let mut visitor = hacks::HackyFormatter;
         // Write save
         {
@@ -72,6 +78,16 @@ pub fn save_board(board: &Board, is_game_over: bool) {
         }
         visitor.visit_document_mut(&mut doc);
         std::fs::write(dir, doc.to_string()).unwrap();
+    }
+}
+
+/// Deletes the config file, if it exists.
+pub fn reset_config() {
+    if let Some(dir) = dirs::config_local_dir() {
+        let dir = dir.join(constants::CONFIG_PATH);
+        if dir.exists() {
+            std::fs::remove_file(dir).unwrap();
+        }
     }
 }
 

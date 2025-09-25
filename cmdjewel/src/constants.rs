@@ -29,6 +29,8 @@ pub mod strings {
         "Command not found. Available commands are main/m, play/p [classic/zen], q[a/!], hint/h";
     pub const KEY_NOT_FOUND: &str =
         "Key not recognized. Use the arrow keys to move and the enter key to enter SWAP mode.";
+    pub const SETTINGS: &str = "Settings";
+    pub const BACK: &str = "Back";
 
     pub fn first_save(path: &str) -> String {
         format!("cmdjewel just created a save file at {}. When you return, it'll load your game from that path.", path)

@@ -10,7 +10,7 @@ use cursive::event::{Callback, Event, EventResult};
 use cursive::view::{Margins, Nameable, Resizable};
 use cursive::views::{
     Dialog, EditView, FocusTracker, LinearLayout, NamedView, OnEventView, PaddedView, Panel,
-    ProgressBar, TextView,
+    ProgressBar, SliderView, TextView,
 };
 use cursive::Cursive;
 
@@ -24,6 +24,30 @@ macro_rules! spacer {
         let n: usize = $size; // Force types to be unsigned integers
         TextView::new("\n".repeat(n))
     }};
+}
+
+/// Creates a horizontal spacer of size $size, or 1 by default
+macro_rules! hspacer {
+    () => {
+        spacer!(1)
+    };
+
+    ($size:expr) => {{
+        let n: usize = $size; // Force types to be unsigned integers
+        TextView::new(" ".repeat(n))
+    }};
+}
+
+/// Creates a confirmation dialog.
+macro_rules! confirm {
+    ($s:expr, $label:expr, $cb:expr) => {
+        $s.add_layer(
+            Dialog::around(TextView::new($label))
+                .title("Are you sure?")
+                .button("Yes", $cb)
+                .dismiss_button("No"),
+        )
+    };
 }
 
 /// Creates a gamemode button for the main menu, that changes `about_gamemode` when focused.
@@ -49,15 +73,13 @@ macro_rules! gamemode_btn {
 /// It's a remake of a combination of Bejeweled 3's "Play" screen and its gamemode selector.
 pub fn show_menu_main(s: &mut Cursive) {
     // If a game exists, save it
+    let mut save_path = None;
     if let Some(p) = config::config_path() {
         // It's possible to get the config path e.g. the OS config path exists
-        if !p.exists() {
-            // OS config path exists, but /cmdjewel doesn't.
-            s.add_layer(Dialog::info(strings::first_save(
-                p.as_os_str().to_str().unwrap(),
-            )));
+        if !p.exists() && s.find_name::<BoardView>("board").is_some() {
+            save_path = Some(p.as_os_str().to_str().unwrap().to_string())
         }
-        s.call_on_name("board", |b: &mut BoardView| {
+        s.call_on_name("board", move |b: &mut BoardView| {
             save_board(&b.board, !b.board.is_valid())
         })
         .unwrap_or_default();
@@ -85,6 +107,7 @@ pub fn show_menu_main(s: &mut Cursive) {
             .child(
                 Dialog::around(buttons)
                     .title(strings::MAIN_MENU.to_lowercase())
+                    .button(strings::SETTINGS, |s| show_settings(s))
                     .button(strings::QUIT, |s| s.quit())
                     .padding(Margins::lrtb(0, 0, 1, 0)),
             )
@@ -100,6 +123,10 @@ pub fn show_menu_main(s: &mut Cursive) {
             ))
             .max_width(40),
     );
+    // Show info dialog if the game is being saved for the first time
+    if let Some(path) = save_path {
+        s.add_layer(Dialog::info(strings::first_save(&path)));
+    }
 }
 
 /// Shows the start menu, or splash screen.
@@ -255,4 +282,43 @@ pub fn init_commands(s: &mut Cursive) {
                 .fixed_width(32),
         );
     });
+}
+
+/// Shows the settings dialog.
+pub fn show_settings(s: &mut Cursive) {
+    let settings = config::load_config().settings;
+    let mut slider = SliderView::horizontal(25); // TODO 25 is a constant
+    slider.set_value((settings.music_vol * (slider.get_max_value() - 1) as f32) as usize);
+    slider.set_on_change(|_, v| {
+        let mut cfg = config::load_config();
+        cfg.settings.music_vol = v as f32 / 24.; // TODO 24 is a constant; 25 - 1
+        config::save_config(&cfg);
+        it2play_rs::set_global_volume((cfg.settings.music_vol * 128.) as u16);
+    });
+    s.add_layer(
+        Dialog::around(
+            LinearLayout::vertical().child(
+                LinearLayout::horizontal()
+                    .child(TextView::new("Music volume"))
+                    .child(hspacer!(2))
+                    .child(slider),
+            ),
+        )
+        .title(strings::SETTINGS)
+        .button("Reset", |s| {
+            confirm!(
+                s,
+                "This will delete your config file, including all your saved games.",
+                |s| {
+                    config::reset_config();
+                    s.pop_layer().unwrap();
+                    s.pop_layer().unwrap();
+                }
+            )
+        })
+        .button(strings::BACK, |s| {
+            s.pop_layer().unwrap();
+        })
+        .padding(Margins::lrtb(1, 1, 1, 0)),
+    );
 }
