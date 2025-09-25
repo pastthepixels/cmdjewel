@@ -43,9 +43,9 @@ macro_rules! confirm {
     ($s:expr, $label:expr, $cb:expr) => {
         $s.add_layer(
             Dialog::around(TextView::new($label))
-                .title("Are you sure?")
-                .button("Yes", $cb)
-                .dismiss_button("No"),
+                .title(strings::ARE_SURE)
+                .button(strings::YES, $cb)
+                .dismiss_button(strings::NO),
         )
     };
 }
@@ -299,22 +299,18 @@ pub fn show_settings(s: &mut Cursive) {
         Dialog::around(
             LinearLayout::vertical().child(
                 LinearLayout::horizontal()
-                    .child(TextView::new("Music volume"))
+                    .child(TextView::new(strings::MUSIC_VOL))
                     .child(hspacer!(2))
                     .child(slider),
             ),
         )
         .title(strings::SETTINGS)
-        .button("Reset", |s| {
-            confirm!(
-                s,
-                "This will delete your config file, including all your saved games.",
-                |s| {
-                    config::reset_config();
-                    s.pop_layer().unwrap();
-                    s.pop_layer().unwrap();
-                }
-            )
+        .button(strings::RESET, |s| {
+            confirm!(s, strings::WARN_RESET, |s| {
+                config::reset_config();
+                s.pop_layer().unwrap();
+                s.pop_layer().unwrap();
+            })
         })
         .button(strings::BACK, |s| {
             s.pop_layer().unwrap();

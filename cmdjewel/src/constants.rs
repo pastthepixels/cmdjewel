@@ -31,6 +31,13 @@ pub mod strings {
         "Key not recognized. Use the arrow keys to move and the enter key to enter SWAP mode.";
     pub const SETTINGS: &str = "Settings";
     pub const BACK: &str = "Back";
+    pub const RESET: &str = "Reset";
+    pub const YES: &str = "Yes";
+    pub const NO: &str = "No";
+    pub const MUSIC_VOL: &str = "Music volume";
+    pub const WARN_RESET: &str =
+        "This will delete your config file, including all your saved games.";
+    pub const ARE_SURE: &str = "Are you sure?";
 
     pub fn first_save(path: &str) -> String {
         format!("cmdjewel just created a save file at {}. When you return, it'll load your game from that path.", path)
