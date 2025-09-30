@@ -1,7 +1,8 @@
 ![cmdjewel](assets/images/logo.svg)
 ========
 
-[cmdjewel.webm](https://github.com/user-attachments/assets/4173f720-140a-40ca-bd05-ac8a7674ebf0)
+[cmdjewel.webm](https://github.com/user-attachments/assets/69ca8994-b557-4e74-9639-5edbd72ed42e)
+
 
 cmdjewel is a terminal match-3 game inspired by Bejeweled, written with Rust and cursive.
 
