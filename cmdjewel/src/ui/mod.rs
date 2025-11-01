@@ -6,12 +6,12 @@ use cmdjewel_core::board::BoardConfig;
 use cpal::traits::StreamTrait;
 use cpal::Stream;
 use cursive::event::{Callback, Event, EventResult};
-use cursive::view::{Margins, Nameable, Resizable};
+use cursive::view::{Finder, Margins, Nameable, Offset, Resizable};
 use cursive::views::{
-    Dialog, EditView, FocusTracker, LinearLayout, NamedView, OnEventView, PaddedView, Panel,
-    ProgressBar, SliderView, TextView,
+    Dialog, EditView, FocusTracker, LayerPosition, LinearLayout, NamedView, OnEventView,
+    PaddedView, Panel, ProgressBar, SliderView, TextView,
 };
-use cursive::Cursive;
+use cursive::{Cursive, XY};
 
 mod macros;
 mod multiline_button;
@@ -31,11 +31,6 @@ pub fn show_menu_main(s: &mut Cursive) {
         })
         .unwrap_or_default();
     }
-    // Remove top layer
-    s.pop_layer();
-    // Soundtrack
-    it2play_rs::play(0x02);
-    it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
     // Creates a button list
     let button_classic = gamemode_btn!(strings::CLASSIC, strings::CLASSIC_DESC, |s| {
         show_game(s, BoardConfig::new_classic());
@@ -48,7 +43,8 @@ pub fn show_menu_main(s: &mut Cursive) {
         .child(vspacer!())
         .child(button_zen);
     // Adds buttons in the main menu, and a descriptor of game modes (when hovered)
-    s.add_layer(
+    switch_screen(
+        s,
         LinearLayout::vertical()
             .child(TextView::new(strings::CMDJEWEL_LOGO))
             .child(
@@ -69,6 +65,7 @@ pub fn show_menu_main(s: &mut Cursive) {
                 .min_height(3),
             ))
             .max_width(40),
+        0x02,
     );
     // Show info dialog if the game is being saved for the first time
     if let Some(path) = save_path {
@@ -78,23 +75,20 @@ pub fn show_menu_main(s: &mut Cursive) {
 
 /// Shows the start menu, or splash screen.
 /// This is a remake of a combination of Bejeweled 3's loading screen and its "Play" screen.
-pub fn show_menu_start(s: &mut Cursive) {
-    s.pop_layer();
-    s.add_layer(
+pub fn show_menu_splash(s: &mut Cursive) {
+    switch_screen(
+        s,
         LinearLayout::vertical()
             .child(TextView::new(
                 strings::LOGO_GEMS.to_string() + strings::CMDJEWEL_LOGO,
             ))
             .child(Button::new_raw(strings::PLAY, show_menu_main)),
+        0,
     );
 }
 
 /// This starts the game given a BoardConfig (which decides game factors such as if it is in classic/zen mode)
 pub fn show_game(s: &mut Cursive, config: BoardConfig) {
-    s.pop_layer();
-    // Soundtrack
-    it2play_rs::play(0x0D);
-    it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
     let name = config.name.clone();
     // Creates the layout for the dialog
     let layout = LinearLayout::vertical()
@@ -139,9 +133,7 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     let game_dialog = Dialog::around(layout).title(name);
 
     // Adds the dialog into a new layer
-    s.add_layer(game_dialog);
-
-    s.focus_name("board").unwrap();
+    switch_screen(s, game_dialog, 0x0d);
 }
 
 /// Shows the settings dialog.
@@ -216,14 +208,6 @@ pub fn init_commands(s: &mut Cursive) {
             } else if command == "play zen" || command == "p zen" {
                 show_game(s, BoardConfig::new_zen());
             }
-            // Sound controls
-            else if command == "mpause" {
-                let stream: &mut Stream = s.user_data().unwrap();
-                stream.pause().unwrap();
-            } else if command == "mplay" {
-                let stream: &mut Stream = s.user_data().unwrap();
-                stream.play().unwrap();
-            }
             // Vim keys
             else if command == "q" || command == "qa" {
                 // Save and quit
@@ -261,4 +245,46 @@ pub fn init_commands(s: &mut Cursive) {
                 .fixed_width(32),
         );
     });
+}
+
+/// Switches the topmost layer with a new layer, `view`. Since screens are displayed on their own layers (e.g. splash screen, main menu screen, games), this effectively fulfills the role of switching screens.
+/// We'll use the name "_screen" to denote one of these screens. I'm hesitant to use "scene" as terminology here since we're working with an immediate mode GUI instead of a scene structure like Godot or Unity.
+fn switch_screen<T: cursive::view::IntoBoxedView + cursive::view::View>(
+    s: &mut Cursive,
+    view: T,
+    soundtrack: u16,
+) {
+    // Skip if there's already a View that's about to be inserted.
+    if s.user_data::<T>().is_some() {
+        return;
+    }
+    // Switch module order for the screen
+    it2play_rs::play(soundtrack);
+    it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
+    // Play an animation! If applicable.
+    if let Some(layer_position) = s.screen_mut().find_layer_from_name("_screen") {
+        let mut pos = s.screen().layer_offset(layer_position).unwrap();
+        let max_y = pos.y - 7;
+        s.set_user_data(view);
+        s.set_global_callback(Event::Refresh, move |s| {
+            // Slide the topmost layer up by 1.
+            pos.y -= 1;
+            s.reposition_layer(layer_position, XY::absolute(pos));
+            s.screen_mut();
+            // Swap layers, remove callback
+            if pos.y <= max_y {
+                s.screen_mut().remove_layer(layer_position);
+                let view = s.take_user_data::<T>().unwrap().with_name("_screen");
+                s.add_layer(view);
+                s.screen_mut().move_to_back(LayerPosition::FromFront(0));
+                s.clear_global_callbacks(Event::Refresh);
+                // If a game board is found, focus the board.
+                s.focus_name("board")
+                    .unwrap_or_else(|_| EventResult::Ignored);
+            }
+        });
+    } else {
+        // Otherwise just add the view
+        s.add_layer(view.with_name("_screen"));
+    }
 }

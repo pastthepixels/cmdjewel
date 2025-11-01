@@ -49,9 +49,8 @@ fn main() {
     stream.play().unwrap();
     it2play_rs::play(0);
     it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
-    siv.set_user_data(stream);
     // show the start screen
-    ui::show_menu_start(&mut siv);
+    ui::show_menu_splash(&mut siv);
     // set up commands
     ui::init_commands(&mut siv);
     // Set the refresh rate to 30 FPS and run
