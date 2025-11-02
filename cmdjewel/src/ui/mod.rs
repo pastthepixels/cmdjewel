@@ -3,15 +3,16 @@ use crate::ui::multiline_button::Button;
 use crate::view::BoardView;
 use crate::{config, confirm, gamemode_btn, hspacer, vspacer};
 use cmdjewel_core::board::BoardConfig;
-use cpal::traits::StreamTrait;
-use cpal::Stream;
-use cursive::event::{Callback, Event, EventResult};
-use cursive::view::{Finder, Margins, Nameable, Offset, Resizable};
+use cursive::event::Callback;
+use cursive::event::{Event, EventResult};
+use cursive::style::PaletteColor;
+use cursive::theme::Color;
+use cursive::view::{Margins, Nameable, Resizable};
 use cursive::views::{
-    Dialog, EditView, FocusTracker, LayerPosition, LinearLayout, NamedView, OnEventView,
+    Dialog, DummyView, EditView, FocusTracker, LayerPosition, LinearLayout, NamedView, OnEventView,
     PaddedView, Panel, ProgressBar, SliderView, TextView,
 };
-use cursive::{Cursive, XY};
+use cursive::{Cursive, View, XY};
 
 mod macros;
 mod multiline_button;
@@ -249,38 +250,62 @@ pub fn init_commands(s: &mut Cursive) {
 
 /// Switches the topmost layer with a new layer, `view`. Since screens are displayed on their own layers (e.g. splash screen, main menu screen, games), this effectively fulfills the role of switching screens.
 /// We'll use the name "_screen" to denote one of these screens. I'm hesitant to use "scene" as terminology here since we're working with an immediate mode GUI instead of a scene structure like Godot or Unity.
-fn switch_screen<T: cursive::view::IntoBoxedView + cursive::view::View>(
-    s: &mut Cursive,
-    view: T,
-    soundtrack: u16,
-) {
-    // Skip if there's already a View that's about to be inserted.
-    if s.user_data::<T>().is_some() {
-        return;
-    }
+fn switch_screen<T: View>(s: &mut Cursive, view: T, soundtrack: u16) {
     // Switch module order for the screen
+    let vol = (config::load_config().settings.music_vol * 128.) as u16;
     it2play_rs::play(soundtrack);
-    it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
+    it2play_rs::set_global_volume(vol);
     // Play an animation! If applicable.
     if let Some(layer_position) = s.screen_mut().find_layer_from_name("_screen") {
         let mut pos = s.screen().layer_offset(layer_position).unwrap();
-        let max_y = pos.y - 7;
+        let mut ticks = 0;
+        let max_ticks = 10;
+        let palette = s.current_theme().palette.clone();
         s.set_user_data(view);
+        s.screen_mut()
+            .add_transparent_layer(DummyView::new().with_name("_overlay"));
         s.set_global_callback(Event::Refresh, move |s| {
             // Slide the topmost layer up by 1.
-            pos.y -= 1;
+            if pos.y > 0 {
+                pos.y -= 1;
+            }
             s.reposition_layer(layer_position, XY::absolute(pos));
-            s.screen_mut();
+            // Fade out colors.
+            s.update_theme(|t| {
+                if let Color::Rgb(br, bg, bb) = PaletteColor::Background.resolve(&t.palette) {
+                    [
+                        PaletteColor::Background,
+                        PaletteColor::Primary,
+                        PaletteColor::HighlightText,
+                        PaletteColor::Highlight,
+                        PaletteColor::TitlePrimary,
+                    ]
+                    .iter()
+                    .for_each(|p| {
+                        if let Color::Rgb(r, g, b) = p.resolve(&t.palette) {
+                            t.palette.set_color(
+                                &format!("{:?}", p),
+                                Color::Rgb(r / 2 + br / 2, g / 2 + bg / 2, b / 2 + bb / 2),
+                            );
+                        }
+                    });
+                }
+            });
+            // Increase ticks
+            ticks += 1;
             // Swap layers, remove callback
-            if pos.y <= max_y {
-                s.screen_mut().remove_layer(layer_position);
+            if ticks >= max_ticks {
                 let view = s.take_user_data::<T>().unwrap().with_name("_screen");
+                while s.pop_layer().is_some() {}
                 s.add_layer(view);
                 s.screen_mut().move_to_back(LayerPosition::FromFront(0));
                 s.clear_global_callbacks(Event::Refresh);
                 // If a game board is found, focus the board.
-                s.focus_name("board")
-                    .unwrap_or_else(|_| EventResult::Ignored);
+                s.focus_name("board").unwrap_or(EventResult::Ignored);
+                // Reset color palette
+                s.update_theme(|t| {
+                    t.palette = palette.clone();
+                });
             }
         });
     } else {
