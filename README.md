@@ -28,15 +28,15 @@ If you notice everything's too small, try changing your terminal's font size. Th
 
 # TODO:
 - [x] MacOS export
-- [ ] Music/SFX slider
-- [ ] Settings page accessible in-game/main menu
+- [x] Music/SFX slider
+- [x] Settings page accessible in-game/main menu
 - [X] Saving/loading from config files (TOML probably somewhere in ~/.config)
 - [X] Better title screen logo
-- [ ] Animated title screen background
-- [ ] Animation from moving from the title screen to main menu
+- [x] Animation from moving from the title screen to main menu
 - [X] Main menu resembling Bejeweled 3
-- [ ] Sound effects
-- [ ] Special gems that explode hypercubes activate those hypercubes
 - [x] Hypercube with hypercube matching
+- [ ] Sound effects
+- [-] Music rewrite (in progress)
+- [ ] Special gems that explode hypercubes activate those hypercubes
 - [ ] Star gems
 - [ ] Supernova gems
