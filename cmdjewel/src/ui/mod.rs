@@ -1,73 +1,21 @@
-use crate::config;
-use crate::config::save_board;
 use crate::constants::strings;
-use crate::multiline_button::Button;
+use crate::ui::multiline_button::Button;
 use crate::view::BoardView;
+use crate::{config, confirm, gamemode_btn, hspacer, vspacer};
 use cmdjewel_core::board::BoardConfig;
-use cpal::traits::StreamTrait;
-use cpal::Stream;
-use cursive::event::{Callback, Event, EventResult};
+use cursive::event::Callback;
+use cursive::event::{Event, EventResult};
+use cursive::style::PaletteColor;
+use cursive::theme::Color;
 use cursive::view::{Margins, Nameable, Resizable};
 use cursive::views::{
-    Dialog, EditView, FocusTracker, LinearLayout, NamedView, OnEventView, PaddedView, Panel,
-    ProgressBar, SliderView, TextView,
+    Dialog, DummyView, EditView, FocusTracker, LayerPosition, LinearLayout, NamedView, OnEventView,
+    PaddedView, Panel, ProgressBar, SliderView, TextView,
 };
-use cursive::Cursive;
+use cursive::{Cursive, View, XY};
 
-/// Creates a vertical spacer of size $size, or 1 by default
-macro_rules! spacer {
-    () => {
-        spacer!(1)
-    };
-
-    ($size:expr) => {{
-        let n: usize = $size; // Force types to be unsigned integers
-        TextView::new("\n".repeat(n))
-    }};
-}
-
-/// Creates a horizontal spacer of size $size, or 1 by default
-macro_rules! hspacer {
-    () => {
-        spacer!(1)
-    };
-
-    ($size:expr) => {{
-        let n: usize = $size; // Force types to be unsigned integers
-        TextView::new(" ".repeat(n))
-    }};
-}
-
-/// Creates a confirmation dialog.
-macro_rules! confirm {
-    ($s:expr, $label:expr, $cb:expr) => {
-        $s.add_layer(
-            Dialog::around(TextView::new($label))
-                .title(strings::ARE_SURE)
-                .button(strings::YES, $cb)
-                .dismiss_button(strings::NO),
-        )
-    };
-}
-
-/// Creates a gamemode button for the main menu, that changes `about_gamemode` when focused.
-macro_rules! gamemode_btn {
-    ($label:expr, $desc:expr, $cb:expr) => {
-        FocusTracker::new(Button::new_raw(
-            "╭───────────╮\n│".to_string()
-                + format!("{: ^11}", $label).as_str()
-                + "│\n╰───────────╯",
-            $cb,
-        ))
-        .on_focus(|_| {
-            EventResult::Consumed(Some(Callback::from_fn(|s| {
-                s.call_on_name("about_gamemode", |view: &mut TextView| {
-                    view.set_content($desc)
-                });
-            })))
-        })
-    };
-}
+mod macros;
+mod multiline_button;
 
 /// Shows the main menu, where gamemodes can be selected.
 /// It's a remake of a combination of Bejeweled 3's "Play" screen and its gamemode selector.
@@ -80,15 +28,10 @@ pub fn show_menu_main(s: &mut Cursive) {
             save_path = Some(p.as_os_str().to_str().unwrap().to_string())
         }
         s.call_on_name("board", move |b: &mut BoardView| {
-            save_board(&b.board, !b.board.is_valid())
+            config::save_board(&b.board, !b.board.is_valid())
         })
         .unwrap_or_default();
     }
-    // Remove top layer
-    s.pop_layer();
-    // Soundtrack
-    it2play_rs::play(0x02);
-    it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
     // Creates a button list
     let button_classic = gamemode_btn!(strings::CLASSIC, strings::CLASSIC_DESC, |s| {
         show_game(s, BoardConfig::new_classic());
@@ -98,10 +41,11 @@ pub fn show_menu_main(s: &mut Cursive) {
     });
     let buttons = LinearLayout::vertical()
         .child(button_classic)
-        .child(spacer!())
+        .child(vspacer!())
         .child(button_zen);
     // Adds buttons in the main menu, and a descriptor of game modes (when hovered)
-    s.add_layer(
+    switch_screen(
+        s,
         LinearLayout::vertical()
             .child(TextView::new(strings::CMDJEWEL_LOGO))
             .child(
@@ -122,6 +66,7 @@ pub fn show_menu_main(s: &mut Cursive) {
                 .min_height(3),
             ))
             .max_width(40),
+        0x02,
     );
     // Show info dialog if the game is being saved for the first time
     if let Some(path) = save_path {
@@ -131,28 +76,20 @@ pub fn show_menu_main(s: &mut Cursive) {
 
 /// Shows the start menu, or splash screen.
 /// This is a remake of a combination of Bejeweled 3's loading screen and its "Play" screen.
-pub fn show_menu_start(s: &mut Cursive) {
-    s.pop_layer();
-    s.add_layer(
+pub fn show_menu_splash(s: &mut Cursive) {
+    switch_screen(
+        s,
         LinearLayout::vertical()
             .child(TextView::new(
                 strings::LOGO_GEMS.to_string() + strings::CMDJEWEL_LOGO,
             ))
             .child(Button::new_raw(strings::PLAY, show_menu_main)),
+        0,
     );
-
-    // s.reposition_layer(
-    //     cursive::views::LayerPosition::FromFront(0),
-    //     cursive::XY::absolute(s.screen_size() / 2 - (1, 0)),
-    // );
 }
 
 /// This starts the game given a BoardConfig (which decides game factors such as if it is in classic/zen mode)
 pub fn show_game(s: &mut Cursive, config: BoardConfig) {
-    s.pop_layer();
-    // Soundtrack
-    it2play_rs::play(0x0D);
-    it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
     let name = config.name.clone();
     // Creates the layout for the dialog
     let layout = LinearLayout::vertical()
@@ -197,9 +134,42 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     let game_dialog = Dialog::around(layout).title(name);
 
     // Adds the dialog into a new layer
-    s.add_layer(game_dialog);
+    switch_screen(s, game_dialog, 0x0d);
+}
 
-    s.focus_name("board").unwrap();
+/// Shows the settings dialog.
+pub fn show_settings(s: &mut Cursive) {
+    let settings = config::load_config().settings;
+    let mut slider = SliderView::horizontal(25); // TODO 25 is a constant
+    slider.set_value((settings.music_vol * (slider.get_max_value() - 1) as f32) as usize);
+    slider.set_on_change(|_, v| {
+        let mut cfg = config::load_config();
+        cfg.settings.music_vol = v as f32 / 24.; // TODO 24 is a constant; 25 - 1
+        config::save_config(&cfg);
+        it2play_rs::set_global_volume((cfg.settings.music_vol * 128.) as u16);
+    });
+    s.add_layer(
+        Dialog::around(
+            LinearLayout::vertical().child(
+                LinearLayout::horizontal()
+                    .child(TextView::new(strings::MUSIC_VOL))
+                    .child(hspacer!(2))
+                    .child(slider),
+            ),
+        )
+        .title(strings::SETTINGS)
+        .button(strings::RESET, |s| {
+            confirm!(s, strings::WARN_RESET, |s| {
+                config::reset_config();
+                s.pop_layer().unwrap();
+                s.pop_layer().unwrap();
+            })
+        })
+        .button(strings::BACK, |s| {
+            s.pop_layer().unwrap();
+        })
+        .padding(Margins::lrtb(1, 1, 1, 0)),
+    );
 }
 
 /// Initialises setting commands by creating a callback for the colon key
@@ -239,20 +209,14 @@ pub fn init_commands(s: &mut Cursive) {
             } else if command == "play zen" || command == "p zen" {
                 show_game(s, BoardConfig::new_zen());
             }
-            // Sound controls
-            else if command == "mpause" {
-                let stream: &mut Stream = s.user_data().unwrap();
-                stream.pause().unwrap();
-            } else if command == "mplay" {
-                let stream: &mut Stream = s.user_data().unwrap();
-                stream.play().unwrap();
-            }
             // Vim keys
             else if command == "q" || command == "qa" {
                 // Save and quit
                 // If a game exists, save it
-                s.call_on_name("board", |b: &mut BoardView| save_board(&b.board, false))
-                    .unwrap_or_default();
+                s.call_on_name("board", |b: &mut BoardView| {
+                    config::save_board(&b.board, false)
+                })
+                .unwrap_or_default();
                 s.quit();
             } else if command == "q!" || command == "qa!" {
                 // Force quit
@@ -284,37 +248,68 @@ pub fn init_commands(s: &mut Cursive) {
     });
 }
 
-/// Shows the settings dialog.
-pub fn show_settings(s: &mut Cursive) {
-    let settings = config::load_config().settings;
-    let mut slider = SliderView::horizontal(25); // TODO 25 is a constant
-    slider.set_value((settings.music_vol * (slider.get_max_value() - 1) as f32) as usize);
-    slider.set_on_change(|_, v| {
-        let mut cfg = config::load_config();
-        cfg.settings.music_vol = v as f32 / 24.; // TODO 24 is a constant; 25 - 1
-        config::save_config(&cfg);
-        it2play_rs::set_global_volume((cfg.settings.music_vol * 128.) as u16);
-    });
-    s.add_layer(
-        Dialog::around(
-            LinearLayout::vertical().child(
-                LinearLayout::horizontal()
-                    .child(TextView::new(strings::MUSIC_VOL))
-                    .child(hspacer!(2))
-                    .child(slider),
-            ),
-        )
-        .title(strings::SETTINGS)
-        .button(strings::RESET, |s| {
-            confirm!(s, strings::WARN_RESET, |s| {
-                config::reset_config();
-                s.pop_layer().unwrap();
-                s.pop_layer().unwrap();
-            })
-        })
-        .button(strings::BACK, |s| {
-            s.pop_layer().unwrap();
-        })
-        .padding(Margins::lrtb(1, 1, 1, 0)),
-    );
+/// Switches the topmost layer with a new layer, `view`. Since screens are displayed on their own layers (e.g. splash screen, main menu screen, games), this effectively fulfills the role of switching screens.
+/// We'll use the name "_screen" to denote one of these screens. I'm hesitant to use "scene" as terminology here since we're working with an immediate mode GUI instead of a scene structure like Godot or Unity.
+fn switch_screen<T: View>(s: &mut Cursive, view: T, soundtrack: u16) {
+    // Switch module order for the screen
+    let vol = (config::load_config().settings.music_vol * 128.) as u16;
+    it2play_rs::play(soundtrack);
+    it2play_rs::set_global_volume(vol);
+    // Play an animation! If applicable.
+    if let Some(layer_position) = s.screen_mut().find_layer_from_name("_screen") {
+        let mut pos = s.screen().layer_offset(layer_position).unwrap();
+        let mut ticks = 0;
+        let max_ticks = 10;
+        let palette = s.current_theme().palette.clone();
+        s.set_user_data(view);
+        s.screen_mut()
+            .add_transparent_layer(DummyView::new().with_name("_overlay"));
+        s.set_global_callback(Event::Refresh, move |s| {
+            // Slide the topmost layer up by 1.
+            if pos.y > 0 {
+                pos.y -= 1;
+            }
+            s.reposition_layer(layer_position, XY::absolute(pos));
+            // Fade out colors.
+            s.update_theme(|t| {
+                if let Color::Rgb(br, bg, bb) = PaletteColor::Background.resolve(&t.palette) {
+                    [
+                        PaletteColor::Background,
+                        PaletteColor::Primary,
+                        PaletteColor::HighlightText,
+                        PaletteColor::Highlight,
+                        PaletteColor::TitlePrimary,
+                    ]
+                    .iter()
+                    .for_each(|p| {
+                        if let Color::Rgb(r, g, b) = p.resolve(&t.palette) {
+                            t.palette.set_color(
+                                &format!("{:?}", p),
+                                Color::Rgb(r / 2 + br / 2, g / 2 + bg / 2, b / 2 + bb / 2),
+                            );
+                        }
+                    });
+                }
+            });
+            // Increase ticks
+            ticks += 1;
+            // Swap layers, remove callback
+            if ticks >= max_ticks {
+                let view = s.take_user_data::<T>().unwrap().with_name("_screen");
+                while s.pop_layer().is_some() {}
+                s.add_layer(view);
+                s.screen_mut().move_to_back(LayerPosition::FromFront(0));
+                s.clear_global_callbacks(Event::Refresh);
+                // If a game board is found, focus the board.
+                s.focus_name("board").unwrap_or(EventResult::Ignored);
+                // Reset color palette
+                s.update_theme(|t| {
+                    t.palette = palette.clone();
+                });
+            }
+        });
+    } else {
+        // Otherwise just add the view
+        s.add_layer(view.with_name("_screen"));
+    }
 }
