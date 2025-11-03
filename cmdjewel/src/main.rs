@@ -5,7 +5,7 @@ mod ui;
 mod view;
 
 use cpal::traits::StreamTrait;
-use cursive::traits::With;
+use cursive::{theme::Color, traits::With};
 
 fn main() {
     let mut siv = cursive::default();
@@ -16,14 +16,17 @@ fn main() {
         palette: cursive::theme::Palette::retro().with(|palette| {
             use cursive::style::PaletteColor::*;
 
-            palette[Background] = cursive::theme::Color::Rgb(46, 52, 64);
-            palette[View] = cursive::theme::Color::Rgb(46, 52, 64);
-            palette[Primary] = cursive::theme::Color::Rgb(213, 219, 230);
-            palette[HighlightText] = cursive::theme::Color::Rgb(213, 219, 230);
-            palette[TitlePrimary] = cursive::theme::Color::Rgb(126, 158, 189);
-            palette[Secondary] = cursive::theme::Color::Rgb(126, 158, 189);
-            palette[Highlight] = cursive::theme::Color::Rgb(190, 96, 105);
-            palette[HighlightInactive] = cursive::theme::Color::Rgb(126, 158, 189);
+            palette[Background] = Color::Rgb(46, 52, 64);
+            palette[View] = Color::Rgb(46, 52, 64);
+            palette[Primary] = Color::Rgb(213, 219, 230);
+            palette[HighlightText] = Color::Rgb(213, 219, 230);
+            palette[TitlePrimary] = Color::Rgb(126, 158, 189);
+            palette[Secondary] = Color::Rgb(76, 86, 106);
+            palette[Tertiary] = Color::Rgb(59, 66, 82);
+            palette[Highlight] = Color::Rgb(190, 96, 105);
+            palette[HighlightInactive] = Color::Rgb(126, 158, 189);
+            palette.set_color("BoardInactive", Color::Rgb(59, 66, 82));
+            palette.set_color("GemInactive", Color::Rgb(76, 86, 106));
         }),
     });
     // Sets the terminal background--uses an ANSI escape sequence to run an Operating System Command (OSC)

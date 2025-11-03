@@ -7,7 +7,7 @@ use cmdjewel_core::point;
 use cmdjewel_core::point::Point;
 use cursive::direction::Direction;
 use cursive::event::{Event, EventResult, MouseEvent};
-use cursive::theme::{Color, ColorStyle};
+use cursive::theme::{Color, ColorStyle, PaletteColor};
 use cursive::traits::Resizable;
 use cursive::view::CannotFocus;
 use cursive::views::{Dialog, ProgressBar, TextView};
@@ -255,7 +255,7 @@ impl cursive::view::View for BoardView {
             }
             // If the board is not focused, grey out everything.
             if !self.has_focus {
-                color = ColorStyle::new(Color::Rgb(76, 86, 106), Color::Rgb(59, 66, 82))
+                color = ColorStyle::new(PaletteColor::Secondary, PaletteColor::Tertiary);
             }
             // Print things, with spacing!
             printer.with_color(color, |printer| {

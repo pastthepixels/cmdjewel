@@ -280,20 +280,10 @@ fn switch_screen<T: View>(s: &mut Cursive, view: T, soundtrack: u16) {
             // Fade out colors.
             s.update_theme(|t| {
                 if let Color::Rgb(br, bg, bb) = PaletteColor::Background.resolve(&t.palette) {
-                    [
-                        PaletteColor::Primary,
-                        PaletteColor::TitlePrimary,
-                        PaletteColor::Secondary,
-                        PaletteColor::HighlightText,
-                        PaletteColor::Highlight,
-                    ]
-                    .iter()
-                    .for_each(|p| {
+                    PaletteColor::all().for_each(|p| {
                         if let Color::Rgb(r, g, b) = p.resolve(&t.palette) {
-                            t.palette.set_color(
-                                &format!("{:?}", p),
-                                Color::Rgb(r / 2 + br / 2, g / 2 + bg / 2, b / 2 + bb / 2),
-                            );
+                            t.palette[p] =
+                                Color::Rgb(r / 2 + br / 2, g / 2 + bg / 2, b / 2 + bb / 2);
                         }
                     });
                 }
