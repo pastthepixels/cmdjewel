@@ -24,6 +24,7 @@ fn main() {
                 palette[TitlePrimary] = cursive::theme::Color::Rgb(126, 158, 189);
                 palette[Secondary] = cursive::theme::Color::Rgb(126, 158, 189);
                 palette[Highlight] = cursive::theme::Color::Rgb(190, 96, 105);
+                palette[HighlightInactive] = cursive::theme::Color::Rgb(126, 158, 189);
             }
 
             {
