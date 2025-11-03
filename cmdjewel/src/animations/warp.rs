@@ -1,4 +1,4 @@
-use crate::animations::{Animation, WARP_KEYFRAMES, WARP_REPEL_DISTANCE};
+use crate::animations::{Animation, WARP_KEYFRAMES, WARP_PULL, WARP_SPIN};
 use cmdjewel_core::gems::Gem;
 use cmdjewel_core::point::Point;
 use cursive::style::{Color, PaletteColor};
@@ -9,7 +9,6 @@ use rand::Rng;
 pub struct Warp {
     keyframe: usize,
     positions: Vec<Point<f32>>,
-    velocities: Vec<Point<f32>>,
     circles: Vec<(usize, Color)>,
 }
 
@@ -17,17 +16,8 @@ impl Warp {
     /// Creates a new explosion animation.
     /// Requires the number of gems on a board, and the force of the explosion.
     pub fn new(num_gems: usize, force: f32) -> Self {
-        let mut rng = rand::rng();
         Warp {
             keyframe: 0,
-            velocities: (0..num_gems)
-                .map(|_| {
-                    Point(
-                        rng.random_range(-force..force),
-                        rng.random_range(-force..force),
-                    )
-                })
-                .collect(),
             positions: Self::calculate_positions(num_gems),
             circles: Vec::new(),
         }
@@ -80,31 +70,27 @@ impl Animation for Warp {
         center.1 = center.0;
         center.0 *= 3.0;
         // For each gem...
-        for i in 0..self.positions.len() {
-            let distance = Point::<f32>::distance_to(self.positions[i], center) + 0.5;
-            if distance != 0.0 {
-                // normalised
-                let direction = Point(
-                    (center.0 - self.positions[i].0) / distance,
-                    (center.1 - self.positions[i].1) / distance,
-                );
-                // If the distance to the center is larger by some amount, repel it from the center.
-                if distance > WARP_REPEL_DISTANCE
-                    || self.get_max_keyframe() - self.keyframe < WARP_KEYFRAMES
-                {
-                    self.velocities[i].0 -= direction.0 * (1.0 / distance);
-                    self.velocities[i].1 -= direction.1 * (1.0 / distance);
-                }
-                // Otherwise, attract it to the center.
-                else {
-                    self.velocities[i].0 += direction.0 * (1.0 / distance);
-                    self.velocities[i].1 += direction.1 * (1.0 / distance);
-                }
-                // Apply the velocity to the position of the gem.
-                self.positions[i].0 += self.velocities[i].0;
-                self.positions[i].1 += self.velocities[i].1;
+        self.positions.iter_mut().for_each(|p| {
+            // Translate
+            p.0 -= center.0;
+            p.1 -= center.1;
+            // Rotate
+            let mut h = (p.0.powi(2) + p.1.powi(2)).sqrt() - WARP_PULL;
+            let u = (p.1 / p.0).atan() + h / WARP_SPIN;
+            if p.0 < 0. {
+                h = -h;
             }
-        }
+            p.0 = h * u.cos();
+            p.1 = h * u.sin();
+            // Translate
+            p.0 += center.0;
+            p.1 += center.1;
+            // Whups!! Edge case!!!
+            if h.abs() < 0.5 {
+                p.0 = 10000.;
+                p.1 = 10000.;
+            }
+        });
         // Add/expand circles
         self.circles = self
             .circles

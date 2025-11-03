@@ -12,10 +12,13 @@ use std::sync::Arc;
 
 const EXPLOSION_GRAVITY: f32 = 0.04;
 
-const WARP_REPEL_DISTANCE: f32 = 5.;
-
 // How many keyframes are needed for the warp animation to push out everything
 const WARP_KEYFRAMES: usize = 50;
+const WARP_PULL: f32 = 0.2;
+const WARP_SPIN: f32 = 80.;
+
+// Hack to measure the window size of a game
+const WINDOW_SIZE: Point<usize> = Point(39, 13);
 
 /// Enum containing types of animations (and any data)
 #[derive(PartialEq, Eq)]
