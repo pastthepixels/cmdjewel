@@ -15,7 +15,7 @@ macro_rules! vspacer {
 #[macro_export]
 macro_rules! hspacer {
     () => {
-        spacer!(1)
+        hspacer!(1)
     };
 
     ($size:expr) => {{

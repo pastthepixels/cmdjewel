@@ -39,10 +39,16 @@ pub fn show_menu_main(s: &mut Cursive) {
     let button_zen = gamemode_btn!(strings::ZEN, strings::ZEN_DESC, |s| {
         show_game(s, BoardConfig::new_zen());
     });
-    let buttons = LinearLayout::vertical()
-        .child(button_classic)
-        .child(vspacer!())
-        .child(button_zen);
+    let buttons = PaddedView::lrtb(
+        5,
+        0,
+        0,
+        0,
+        LinearLayout::horizontal()
+            .child(button_classic)
+            .child(hspacer!(2))
+            .child(button_zen),
+    );
     // Adds buttons in the main menu, and a descriptor of game modes (when hovered)
     switch_screen(
         s,
