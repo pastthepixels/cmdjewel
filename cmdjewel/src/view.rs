@@ -290,7 +290,7 @@ impl cursive::view::View for BoardView {
                 );
                 match event {
                     MouseEvent::Press(_) => {
-                        if point.0 < 8 && point.1 < 8 {
+                        if point.0 < 8 && point.1 < 8 && point.0 >= 0 && point.1 >= 0 {
                             self.cursor_down = Point(point.0 as usize, point.1 as usize);
                             self.board.set_cursor(self.cursor_down);
                             self.cursor_mode = CursorMode::Swap;
@@ -338,7 +338,7 @@ impl cursive::view::View for BoardView {
             }
             Event::Refresh => {
                 let mut initial_level = self.board.get_level() + 1;
-                let mut is_valid = !self
+                let is_valid = !self
                     .animations
                     .iter()
                     .any(|x| x.animation_type == AnimationType::Explosion);
@@ -368,10 +368,6 @@ impl cursive::view::View for BoardView {
                 let score = self.board.get_score();
                 let level = self.board.get_level() + 1;
                 let progress = self.board.get_level_progress() * 100.;
-                // Sets is_valid to true and shuffles if the board is not valid
-                if !is_valid && self.board.config_ref().infinite {
-                    is_valid = true;
-                }
                 // Hacks initial_level if there is a warp animation
                 if self
                     .animations
