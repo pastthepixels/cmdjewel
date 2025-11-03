@@ -20,6 +20,7 @@ pub mod strings {
         "Welcome to cmdjewel!\nUse the arrow keys and enter to move around.";
     pub const MAIN_MENU: &str = "Main Menu";
     pub const QUIT: &str = "Quit";
+    pub const OK: &str = "Ok";
     pub const PLAY: &str = "Play Game";
     pub const LEVEL: &str = "Level";
     pub const SCORE: &str = "Score";

@@ -217,6 +217,13 @@ impl BoardView {
 
 impl cursive::view::View for BoardView {
     fn draw(&self, printer: &Printer) {
+        let is_valid = !self
+            .animations
+            .iter()
+            .any(|x| x.animation_type == AnimationType::Explosion);
+        if !is_valid {
+            return;
+        }
         // Loop through each gem/cell
         for i in 0..self.board.as_ref().len() {
             let string = constants::gems::gem_string(self.board.as_ref()[i]);
@@ -331,6 +338,10 @@ impl cursive::view::View for BoardView {
             }
             Event::Refresh => {
                 let mut initial_level = self.board.get_level() + 1;
+                let mut is_valid = !self
+                    .animations
+                    .iter()
+                    .any(|x| x.animation_type == AnimationType::Explosion);
                 // Updates animations
                 self.update_animations();
                 let mut exists_running_animation = false;
@@ -357,13 +368,8 @@ impl cursive::view::View for BoardView {
                 let score = self.board.get_score();
                 let level = self.board.get_level() + 1;
                 let progress = self.board.get_level_progress() * 100.;
-                let mut is_valid = !self
-                    .animations
-                    .iter()
-                    .any(|x| x.animation_type == AnimationType::Explosion);
                 // Sets is_valid to true and shuffles if the board is not valid
                 if !is_valid && self.board.config_ref().infinite {
-                    //self.board.shuffle();
                     is_valid = true;
                 }
                 // Hacks initial_level if there is a warp animation
@@ -401,8 +407,10 @@ impl cursive::view::View for BoardView {
                                 data,
                             )
                             .with_on_finish(move |s| {
-                                ui::show_menu_main(s);
-                                s.add_layer(Dialog::info(strings::game_over(score, level)));
+                                s.add_layer(
+                                    Dialog::text(strings::game_over(score, level))
+                                        .button(strings::OK, |s| ui::show_menu_main(s)),
+                                );
                             })
                             .full_screen(),
                         );

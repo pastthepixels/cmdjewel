@@ -274,11 +274,11 @@ fn switch_screen<T: View>(s: &mut Cursive, view: T, soundtrack: u16) {
             s.update_theme(|t| {
                 if let Color::Rgb(br, bg, bb) = PaletteColor::Background.resolve(&t.palette) {
                     [
-                        PaletteColor::Background,
                         PaletteColor::Primary,
+                        PaletteColor::TitlePrimary,
+                        PaletteColor::Secondary,
                         PaletteColor::HighlightText,
                         PaletteColor::Highlight,
-                        PaletteColor::TitlePrimary,
                     ]
                     .iter()
                     .for_each(|p| {
@@ -297,6 +297,7 @@ fn switch_screen<T: View>(s: &mut Cursive, view: T, soundtrack: u16) {
             if ticks >= max_ticks {
                 let view = s.take_user_data::<T>().unwrap().with_name("_screen");
                 while s.pop_layer().is_some() {}
+                s.clear();
                 s.add_layer(view);
                 s.screen_mut().move_to_back(LayerPosition::FromFront(0));
                 s.clear_global_callbacks(Event::Refresh);
