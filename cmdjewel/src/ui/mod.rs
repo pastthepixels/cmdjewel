@@ -109,11 +109,11 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
                     LinearLayout::vertical()
                         .child(NamedView::new(
                             strings::LEVEL.to_lowercase(),
-                            TextView::new(strings::LEVEL.to_string() + "X"),
+                            TextView::new(strings::LEVEL.to_string() + "█"),
                         ))
                         .child(NamedView::new(
                             strings::SCORE.to_lowercase(),
-                            TextView::new("X"),
+                            TextView::new("█"),
                         ))
                         .child(TextView::new("\n")) // TODO: this is the worst way to do a margin wtf
                         .child(Button::new(strings::HINT, |s| {

@@ -19,6 +19,7 @@ fn main() {
             palette[Background] = cursive::theme::Color::Rgb(46, 52, 64);
             palette[View] = cursive::theme::Color::Rgb(46, 52, 64);
             palette[Primary] = cursive::theme::Color::Rgb(213, 219, 230);
+            palette[HighlightText] = cursive::theme::Color::Rgb(213, 219, 230);
             palette[TitlePrimary] = cursive::theme::Color::Rgb(126, 158, 189);
             palette[Secondary] = cursive::theme::Color::Rgb(126, 158, 189);
             palette[Highlight] = cursive::theme::Color::Rgb(190, 96, 105);
