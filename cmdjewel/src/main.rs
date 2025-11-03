@@ -5,7 +5,10 @@ mod ui;
 mod view;
 
 use cpal::traits::StreamTrait;
-use cursive::{theme::Color, traits::With};
+use cursive::{
+    theme::{Color, ColorStyle},
+    traits::With,
+};
 
 fn main() {
     let mut siv = cursive::default();
@@ -25,8 +28,7 @@ fn main() {
             palette[Tertiary] = Color::Rgb(59, 66, 82);
             palette[Highlight] = Color::Rgb(190, 96, 105);
             palette[HighlightInactive] = Color::Rgb(126, 158, 189);
-            palette.set_color("BoardInactive", Color::Rgb(59, 66, 82));
-            palette.set_color("GemInactive", Color::Rgb(76, 86, 106));
+            palette[cursive::style::PaletteStyle::EditableText].color = ColorStyle::primary();
         }),
     });
     // Sets the terminal background--uses an ANSI escape sequence to run an Operating System Command (OSC)
