@@ -14,27 +14,15 @@ fn main() {
         shadow: false,
         borders: cursive::theme::BorderStyle::Simple,
         palette: cursive::theme::Palette::retro().with(|palette| {
-            {
-                // First, override some colors from the base palette.
-                use cursive::style::PaletteColor::*;
+            use cursive::style::PaletteColor::*;
 
-                palette[Background] = cursive::theme::Color::Rgb(46, 52, 64);
-                palette[View] = cursive::theme::Color::Rgb(46, 52, 64);
-                palette[Primary] = cursive::theme::Color::Rgb(213, 219, 230);
-                palette[TitlePrimary] = cursive::theme::Color::Rgb(126, 158, 189);
-                palette[Secondary] = cursive::theme::Color::Rgb(126, 158, 189);
-                palette[Highlight] = cursive::theme::Color::Rgb(190, 96, 105);
-                palette[HighlightInactive] = cursive::theme::Color::Rgb(126, 158, 189);
-            }
-
-            {
-                // Then override some styles.
-                use cursive::style::Effect::*;
-                use cursive::style::PaletteStyle::*;
-                use cursive::style::Style;
-                palette[Highlight] = palette[Highlight].combine(Bold);
-                palette[EditableTextCursor] = Style::secondary().combine(Reverse).combine(Underline)
-            }
+            palette[Background] = cursive::theme::Color::Rgb(46, 52, 64);
+            palette[View] = cursive::theme::Color::Rgb(46, 52, 64);
+            palette[Primary] = cursive::theme::Color::Rgb(213, 219, 230);
+            palette[TitlePrimary] = cursive::theme::Color::Rgb(126, 158, 189);
+            palette[Secondary] = cursive::theme::Color::Rgb(126, 158, 189);
+            palette[Highlight] = cursive::theme::Color::Rgb(190, 96, 105);
+            palette[HighlightInactive] = cursive::theme::Color::Rgb(126, 158, 189);
         }),
     });
     // Sets the terminal background--uses an ANSI escape sequence to run an Operating System Command (OSC)
