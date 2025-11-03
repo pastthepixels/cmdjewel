@@ -266,13 +266,14 @@ fn switch_screen<T: View>(s: &mut Cursive, view: T, soundtrack: u16) {
         let mut pos = s.screen().layer_offset(layer_position).unwrap();
         let mut ticks = 0;
         let max_ticks = 10;
+        let slide = pos.y > max_ticks;
         let palette = s.current_theme().palette.clone();
         s.set_user_data(view);
         s.screen_mut()
             .add_transparent_layer(DummyView::new().with_name("_overlay"));
         s.set_global_callback(Event::Refresh, move |s| {
             // Slide the topmost layer up by 1.
-            if pos.y > 0 {
+            if slide {
                 pos.y -= 1;
             }
             s.reposition_layer(layer_position, XY::absolute(pos));
