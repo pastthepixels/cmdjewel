@@ -22,6 +22,7 @@ pub mod strings {
     pub const QUIT: &str = "Quit";
     pub const OK: &str = "Ok";
     pub const PLAY: &str = "Play Game";
+    pub const HELP: &str = "Help";
     pub const LEVEL: &str = "Level";
     pub const SCORE: &str = "Score";
     pub const HINT: &str = "Hint";
@@ -36,6 +37,16 @@ pub mod strings {
     pub const YES: &str = "Yes";
     pub const NO: &str = "No";
     pub const MUSIC_VOL: &str = "Music volume";
+    pub const TROUBLESHOOTING: &str = "Troubleshooting";
+    pub const TUTORIAL: &str = "How to play";
+    pub const TUTORIAL_1: &str = "Score as many points as possible until there are no more moves.";
+    pub const TUTORIAL_2: &str = "Swap adjacent gems to make rows of three.";
+    pub const TUTORIAL_3: &str = "Match 4 or more gems to create Special Gems.";
+    pub const TUTORIAL_4: &str = "Make an L or T match to create a Star Gem!";
+    pub const HELP_TUTORIAL: &str = "Press the tutorial button to learn how to play cmdjewel.";
+    pub const HELP_CMDJEWEL: &str =
+        "cmdjewel is a match-3 game for terminal emulators, inspired by Bejeweled.";
+    pub const HELP_CONTROLS: &str = "You can use your mouse with cmdjewel. Try clicking on buttons! Click and swipe to match gems. If you're using the keyboard, press SPACE or ENTER in-game to enter swap mode - where directional keys will swap gems. You can even use Vim keys (h, j, k, and l) as directional keys.";
     pub const WARN_RESET: &str =
         "This will delete your config file, including all your saved games.";
     pub const ARE_SURE: &str = "Are you sure?";

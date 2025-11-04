@@ -41,3 +41,7 @@ If you notice everything's too small, try changing your terminal's font size. Th
 - [ ] Special gems that explode hypercubes activate those hypercubes
 - [ ] Star gems
 - [ ] Supernova gems
+- [x] Help screens
+  - [x] Gameplay tutorial
+  - [x] Troubleshooting
+  - [x] Controls

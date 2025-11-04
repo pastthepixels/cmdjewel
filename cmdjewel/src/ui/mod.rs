@@ -16,6 +16,7 @@ use cursive::{Cursive, View, XY};
 
 mod macros;
 mod multiline_button;
+pub mod tutorial;
 
 /// Shows the main menu, where gamemodes can be selected.
 /// It's a remake of a combination of Bejeweled 3's "Play" screen and its gamemode selector.
@@ -57,6 +58,7 @@ pub fn show_menu_main(s: &mut Cursive) {
             .child(
                 Dialog::around(buttons)
                     .title(strings::MAIN_MENU.to_lowercase())
+                    .button(strings::HELP, |s| tutorial::show_help(s))
                     .button(strings::SETTINGS, |s| show_settings(s))
                     .button(strings::QUIT, |s| s.quit())
                     .padding(Margins::lrtb(0, 0, 1, 0)),
