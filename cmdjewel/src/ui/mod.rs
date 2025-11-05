@@ -1,7 +1,7 @@
 use crate::constants::strings;
 use crate::ui::multiline_button::Button;
 use crate::view::BoardView;
-use crate::{config, confirm, gamemode_btn, hspacer, vspacer};
+use crate::{config, confirm, gamemode_btn, hspacer};
 use cmdjewel_core::board::BoardConfig;
 use cursive::event::Callback;
 use cursive::event::{Event, EventResult};
@@ -261,8 +261,7 @@ pub fn init_commands(s: &mut Cursive) {
 fn switch_screen<T: View>(s: &mut Cursive, view: T, soundtrack: u16) {
     // Switch module order for the screen
     let vol = (config::load_config().settings.music_vol * 128.) as u16;
-    it2play_rs::play(soundtrack);
-    it2play_rs::set_global_volume(vol);
+    let mut vol_m = vol;
     // Play an animation! If applicable.
     if let Some(layer_position) = s.screen_mut().find_layer_from_name("_screen") {
         let mut pos = s.screen().layer_offset(layer_position).unwrap();
@@ -290,6 +289,9 @@ fn switch_screen<T: View>(s: &mut Cursive, view: T, soundtrack: u16) {
                     });
                 }
             });
+            // Fade out volume.
+            vol_m -= vol / max_ticks as u16;
+            it2play_rs::set_global_volume(vol_m);
             // Increase ticks
             ticks += 1;
             // Swap layers, remove callback
@@ -306,6 +308,9 @@ fn switch_screen<T: View>(s: &mut Cursive, view: T, soundtrack: u16) {
                 s.update_theme(|t| {
                     t.palette = palette.clone();
                 });
+                // Play music
+                it2play_rs::play(soundtrack);
+                it2play_rs::set_global_volume(vol);
             }
         });
     } else {
