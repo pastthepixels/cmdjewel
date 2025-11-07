@@ -120,30 +120,29 @@ impl BoardView {
         if self.board.is_full() {
             let mut points: Vec<Point<usize>> = Vec::new();
             // Highlight matching gems
-            self.board
-                .get_matching_gems()
-                .into_iter()
-                .chain(self.board.get_matching_special_gems())
-                .for_each(|x| {
-                    if !points.contains(&x) {
-                        if let Gem::Normal(_) = self.board.get_gem(x.clone()) {
+            self.board.get_matches().iter().for_each(|m| {
+                m.gems.iter().for_each(|&p| {
+                    if !points.contains(&p) {
+                        if let Gem::Normal(_) = self.board.get_gem(p.clone()) {
                             // Highlight normal gems
                             self.animations.push(AnimationDetails {
-                                point: x,
+                                point: p,
                                 duration: 8,
                                 animation_type: AnimationType::Highlight,
                             });
                         } else {
                             // Blink special gems
                             self.animations.push(AnimationDetails {
-                                point: x,
+                                point: p,
                                 duration: 16,
                                 animation_type: AnimationType::Blink(true),
                             });
                         }
-                        points.push(x);
+                        points.push(p);
                     }
-                });
+                    // TODO: recursively iterate over children (soon™)
+                })
+            });
         }
         // Explode if not valid
         if !self.board.is_valid() && self.board.is_full() {
@@ -157,6 +156,8 @@ impl BoardView {
         // TODO: get inserted gems
         if self.board.is_buffer_empty() {
             if self.board.is_full() {
+                self.board.update_matching_gems();
+                /*
                 let inserted = self.board.update_matching_gems();
                 inserted.iter().for_each(|p| {
                     // Blinks inserted gems
@@ -171,6 +172,7 @@ impl BoardView {
                 if inserted.len() > 0 {
                     return;
                 }
+                */
             } else {
                 self.board.fill_gem_buffer();
             }
