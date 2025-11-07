@@ -38,8 +38,8 @@ If you notice everything's too small, try changing your terminal's font size. Th
 - [x] Hypercube with hypercube matching
 - [ ] Sound effects
 - [-] Music rewrite (in progress)
-- [ ] Special gems that explode hypercubes activate those hypercubes
-- [ ] Star gems
+- [x] Special gems that explode hypercubes activate those hypercubes
+- [x] Star gems
 - [ ] Supernova gems
 - [x] Help screens
   - [x] Gameplay tutorial
