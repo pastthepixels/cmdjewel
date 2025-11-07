@@ -285,76 +285,13 @@ impl Board {
         point.1 < self.get_width() && point.0 < self.get_width()
     }
 
-    /// Finds all normal gems that match and returns their positions in the board.
-    /// This can be used as a "dry run" to highlight any gems that have been matched.
-    pub fn get_matching_gems(&self) -> Vec<Point<usize>> {
-        let mut valid_gems: Vec<Point<usize>> = Vec::new();
-        for i in 0..self.data.len() {
-            let point = self.index_to_point(i);
-            if let Gem::Normal(_) = self.data[i] {
-                if self.is_matching_gem(self.data.as_ref(), point) && !valid_gems.contains(&point) {
-                    valid_gems.push(point);
-                }
-            }
-        }
-        valid_gems
-    }
-
-    /// Finds all the gems that are to be removed because of a special gem matching.
-    pub fn get_matching_special_gems(&self) -> Vec<Point<usize>> {
-        let mut valid_gems: Vec<Point<usize>> = Vec::new();
-        let mut special_gems_found: Vec<Point<usize>> = Vec::new();
-        for i in 0..self.data.len() {
-            self.activate_special_gem(i, true).iter().for_each(|x| {
-                let index = self.point_to_index(*x);
-                match self.data[index] {
-                    Gem::Normal(_) => valid_gems.push(*x),
-                    _ => {
-                        valid_gems.push(*x);
-                        if index != i {
-                            special_gems_found.push(*x);
-                        }
-                    }
-                }
-            });
-        }
-        // Iteratively loop to make sure we activated all gems recursively
-        while !special_gems_found.is_empty() {
-            let mut special_gems_new: Vec<Point<usize>> = Vec::new();
-            special_gems_found.iter().for_each(|special_gem| {
-                let special_gem_index = self.point_to_index(*special_gem);
-                self.activate_special_gem(special_gem_index, false)
-                    .iter()
-                    .for_each(|x| {
-                        let index = self.point_to_index(*x);
-                        match self.data[index] {
-                            Gem::Normal(_) => {
-                                if !valid_gems.contains(x) {
-                                    valid_gems.push(*x);
-                                }
-                            }
-                            _ => {
-                                if index != special_gem_index && !valid_gems.contains(x) {
-                                    special_gems_new.push(*x);
-                                } else if !valid_gems.contains(x) {
-                                    valid_gems.push(*x);
-                                }
-                            }
-                        }
-                    });
-            });
-            special_gems_found = special_gems_new;
-        }
-        valid_gems
-    }
-
-    /// Finds all matches recursively
+    /// Finds all gem matches recursively
     pub fn get_matches(&self) -> Vec<Match> {
         let (width, height) = (self.get_width(), self.get_width());
         // Scan vertically and then horizontally to get matches
         let v_matches = matches::scan_matches(&self, width, height, true);
         let mut h_matches = matches::scan_matches(&self, width, height, false);
-        v_matches
+        let mut total_matches: Vec<Match> = v_matches
             .iter()
             .map(|m| {
                 let mut gems = m.gems.clone();
@@ -377,7 +314,7 @@ impl Board {
                 // See if any gem is at the cursor
                 let mut at = gems[0];
                 gems.iter().for_each(|&g| {
-                    if g.0 == self.cursor.0 && g.1 == self.cursor.1 {
+                    if g == self.cursor {
                         at = g;
                     }
                 });
@@ -396,7 +333,36 @@ impl Board {
                     children: vec![], // TODO: recursively check `gems` for special gems to activate, adding a Match to children
                 }
             })
-            .collect()
+            .collect();
+        total_matches.append(
+            &mut h_matches
+                .iter()
+                .map(|m| {
+                    // See if any gem is at the cursor
+                    let mut at = m.gems[0];
+                    m.gems.iter().for_each(|&g| {
+                        if g == self.cursor {
+                            at = g;
+                        }
+                    });
+                    // See what gem should be created depending on the number of gems
+                    let color = self.color_at_point(&self.data, m.gems[0]).unwrap();
+                    let what = match m.gems.len() {
+                        5 => Some(Gem::Hypercube(GemSelector::None)),
+                        4 => Some(Gem::Flame(color)),
+                        _ => None,
+                    };
+                    Match {
+                        gems: m.gems.clone(),
+                        at: at,
+                        what: what,
+                        children: vec![], // TODO: recursively check `gems` for special gems to activate, adding a Match to children
+                    }
+                })
+                .collect(),
+        );
+        total_matches
+        // TODO: Scan for activated hypercubes, too!
     }
 
     /// Given a special gem, returns all the gems it is to remove (including itself)
@@ -461,64 +427,19 @@ impl Board {
     /// - Adds points for each matching gem.
     /// - Adds special gems if applicable.
     /// Returns a vector of the positions of all special gems that have been added.
-    pub fn update_matching_gems(&mut self) -> Vec<Point<usize>> {
-        let mut matching_gems = self.get_matching_gems();
-        // Check for special gems
-        // One-directional chains (flame gems, hypercubes, supernova gems)
-        let mut chains: Vec<Vec<Point<usize>>> = Vec::new();
-        matching_gems.iter().for_each(|point| {
-            let mut chain_found = false;
-            chains.iter_mut().for_each(|chain| {
-                let first = chain.first().unwrap();
-                let last = chain.last().unwrap();
-                if self.data[self.point_to_index(*point)] == self.data[self.point_to_index(*first)]
-                {
-                    // Horizontal chain
-                    if point.1 == first.1
-                        && ((point.0 as i32 - first.0 as i32).abs() == 1
-                            || (point.0 as i32 - last.0 as i32).abs() == 1)
-                    {
-                        chain.push(*point);
-                        chain_found = true;
-                    }
-                    // Vertical chain
-                    else if point.0 == first.0
-                        && ((point.1 as i32 - first.1 as i32).abs() == 1
-                            || (point.1 as i32 - last.1 as i32).abs() == 1)
-                    {
-                        chain.push(*point);
-                        chain_found = true;
-                    }
-                }
-            });
-            // if no chains have been found, create a new one
-            if !chain_found {
-                chains.push(vec![*point]);
-            }
-        });
-        let data_clone = self.data;
+    pub fn update_matching_gems(&mut self) {
+        let matching_gems = self.get_matches();
         // Set every matching gem and (matching) special gem to empty
-        matching_gems.append(&mut self.get_matching_special_gems());
-        matching_gems.iter().for_each(|point| {
-            self.data[self.point_to_index(*point)] = Gem::Empty;
-            self.score += POINTS_SWAP as u32;
-            self.level_progress += self.get_swap_progress();
-        });
-        // Iterate over the chains and add special gems.
-        let mut points = vec![];
-        chains.iter().for_each(|chain| {
-            if chain.len() == 4 {
-                // TODO: Create gems where *they were matched*
-                self.data[self.point_to_index(chain[1])] =
-                    Gem::Flame(self.color_at_point(&data_clone, chain[0]).unwrap());
-                points.push(chain[1]);
-            }
-            if chain.len() == 5 {
-                self.data[self.point_to_index(chain[2])] = Gem::Hypercube(GemSelector::None);
-                points.push(chain[2]);
+        matching_gems.iter().for_each(|m| {
+            m.gems.iter().for_each(|&point| {
+                self.data[self.point_to_index(point)] = Gem::Empty;
+                self.score += POINTS_SWAP as u32;
+                self.level_progress += self.get_swap_progress();
+            });
+            if let Some(gem) = m.what {
+                self.data[self.point_to_index(m.at)] = gem;
             }
         });
-        points
     }
 
     /// Returns true if the entire board is filled with gems.
