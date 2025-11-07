@@ -48,6 +48,7 @@ pub struct Board {
     buffer: [Gem; 64],
     // Location of the cursor as a tuple.
     cursor: Point<usize>,
+    direction: Direction, // The last direction of a match
     // Current score/level
     score: u32,
     level: u8,
@@ -62,6 +63,7 @@ impl Board {
             data: [Gem::Empty; 64],
             buffer: [Gem::Empty; 64],
             cursor: Point(0, 0),
+            direction: Direction::Left,
             score: 0,
             level: 0,
             level_progress: 0.0,
@@ -80,6 +82,7 @@ impl Board {
             data,
             buffer: [Gem::Empty; 64],
             cursor: Point(0, 0),
+            direction: Direction::Left,
             score,
             level,
             level_progress,
@@ -92,6 +95,7 @@ impl Board {
             data,
             buffer: [Gem::Empty; 64],
             cursor: Point(0, 0),
+            direction: Direction::Left,
             score: 0,
             level: 0,
             level_progress: 0.0,
@@ -243,6 +247,7 @@ impl Board {
 
     /// Swaps a gem with a gem in an adjacent direction, which points from the destination from the cursor. **Wrapper for private Board.swap.**
     pub fn swap(&mut self, direction: Direction) {
+        self.direction = direction;
         // Get a destination point from the direction
         let destination = self.get_destination(&direction);
         // If the cursor is on a hypercube, store the direction of swappage.
@@ -353,7 +358,7 @@ impl Board {
             // See if any gem is at the cursor
             m.at = m.gems[0];
             m.gems.iter().for_each(|&g| {
-                if g == self.cursor {
+                if g == self.cursor || g == self.get_destination(&self.direction) {
                     m.at = g;
                 }
             });
