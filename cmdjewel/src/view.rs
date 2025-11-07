@@ -3,6 +3,7 @@ use crate::constants::strings;
 use crate::{config, constants, ui};
 use cmdjewel_core::board::{Board, BoardConfig};
 use cmdjewel_core::gems::Gem;
+use cmdjewel_core::matches::Match;
 use cmdjewel_core::point;
 use cmdjewel_core::point::Point;
 use cursive::direction::Direction;
@@ -119,58 +120,58 @@ impl BoardView {
         // Highlight all matching gems
         if self.board.is_full() {
             let mut points: Vec<Point<usize>> = Vec::new();
-            // Highlight matching gems
-            self.board
-                .get_matching_gems()
-                .into_iter()
-                .chain(self.board.get_matching_special_gems())
-                .for_each(|x| {
-                    if !points.contains(&x) {
-                        if let Gem::Normal(_) = self.board.get_gem(x.clone()) {
-                            // Highlight normal gems
-                            self.animations.push(AnimationDetails {
-                                point: x,
-                                duration: 8,
-                                animation_type: AnimationType::Highlight,
-                            });
-                        } else {
-                            // Blink special gems
-                            self.animations.push(AnimationDetails {
-                                point: x,
-                                duration: 16,
-                                animation_type: AnimationType::Blink(true),
-                            });
-                        }
-                        points.push(x);
+            fn recurse(m: &Match, v: &mut BoardView, points: &mut Vec<Point<usize>>) {
+                if m.what.is_some() {
+                    // Blink inserted gems
+                    v.animations.push(AnimationDetails {
+                        point: m.at,
+                        duration: 16,
+                        animation_type: AnimationType::Blink(true),
+                    });
+                }
+                m.gems.iter().for_each(|&p| {
+                    if !points.contains(&p) {
+                        points.push(p);
                     }
                 });
+                m.children.iter().for_each(|c| {
+                    recurse(c, v, points);
+                });
+            }
+            // Highlight matching gems
+            self.board
+                .get_matches()
+                .iter()
+                .for_each(|m| recurse(m, self, &mut points));
+            points.iter().for_each(|&p| {
+                if let Gem::Normal(_) = self.board.get_gem(p.clone()) {
+                    // Highlight normal gems
+                    self.animations.push(AnimationDetails {
+                        point: p,
+                        duration: 8,
+                        animation_type: AnimationType::Highlight,
+                    });
+                } else {
+                    // Blink special gems
+                    self.animations.push(AnimationDetails {
+                        point: p,
+                        duration: 16,
+                        animation_type: AnimationType::Blink(true),
+                    });
+                }
+            });
         }
         // Explode if not valid
         if !self.board.is_valid() && self.board.is_full() {
             self.animation_explode();
         }
-        // TODO: get inserted power gems, and make them blink.
     }
 
     /// Updates board logic.
     fn update_board(&mut self) {
-        // TODO: get inserted gems
         if self.board.is_buffer_empty() {
             if self.board.is_full() {
-                let inserted = self.board.update_matching_gems();
-                inserted.iter().for_each(|p| {
-                    // Blinks inserted gems
-                    if self.animations_enabled {
-                        self.animations.push(AnimationDetails {
-                            point: *p,
-                            duration: 16,
-                            animation_type: AnimationType::Blink(true),
-                        })
-                    }
-                });
-                if inserted.len() > 0 {
-                    return;
-                }
+                self.board.update_matching_gems();
             } else {
                 self.board.fill_gem_buffer();
             }
