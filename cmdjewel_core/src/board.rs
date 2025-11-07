@@ -2,6 +2,7 @@
 
 use rand::seq::SliceRandom;
 
+use crate::matches::{self, Match};
 use crate::point::{Direction, Point};
 
 use crate::constants::*;
@@ -345,6 +346,57 @@ impl Board {
             special_gems_found = special_gems_new;
         }
         valid_gems
+    }
+
+    /// Finds all matches recursively
+    pub fn get_matches(&self) -> Vec<Match> {
+        let (width, height) = (self.get_width(), self.get_width());
+        // Scan vertically and then horizontally to get matches
+        let v_matches = matches::scan_matches(&self, width, height, true);
+        let mut h_matches = matches::scan_matches(&self, width, height, false);
+        v_matches
+            .iter()
+            .map(|m| {
+                let mut gems = m.gems.clone();
+                // Combine horizontal matches that share a gem
+                let mut shared: Option<usize> = None;
+                for i in 0..h_matches.len() {
+                    // TODO: optimize
+                    h_matches[i].gems.iter().for_each(|&gem_a| {
+                        m.gems.iter().for_each(|&gem_b| {
+                            if gem_a.0 == gem_b.0 && gem_a.1 == gem_b.1 {
+                                shared = Some(i);
+                            }
+                        })
+                    });
+                }
+                if let Some(i) = shared {
+                    gems.append(&mut h_matches[i].gems.clone());
+                    h_matches.remove(i);
+                }
+                // See if any gem is at the cursor
+                let mut at = gems[0];
+                gems.iter().for_each(|&g| {
+                    if g.0 == self.cursor.0 && g.1 == self.cursor.1 {
+                        at = g;
+                    }
+                });
+                // See what gem should be created depending on the number of gems
+                let color = self.color_at_point(&self.data, gems[0]).unwrap();
+                let what = match gems.len() {
+                    5 if shared.is_some() => Some(Gem::Star(color)),
+                    5 => Some(Gem::Hypercube(GemSelector::None)),
+                    4 => Some(Gem::Flame(color)),
+                    _ => None,
+                };
+                Match {
+                    gems: gems,
+                    at: at,
+                    what: what,
+                    children: vec![], // TODO: recursively check `gems` for special gems to activate, adding a Match to children
+                }
+            })
+            .collect()
     }
 
     /// Given a special gem, returns all the gems it is to remove (including itself)
