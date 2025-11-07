@@ -314,7 +314,7 @@ impl Board {
                 }
                 // See what gem should be created depending on the number of gems
                 let color = self.color_at_point(&self.data, gems[0]).unwrap();
-                let what = if shared.is_some() && gems.len() == 5 {
+                let what = if shared.is_some() && gems.len() == 6 {
                     Some(Gem::Star(color))
                 } else {
                     None
@@ -454,6 +454,16 @@ impl Board {
                             }
                         }
                     })
+                }
+            }
+            Gem::Star(_) => {
+                for i in 0..self.get_width() {
+                    if i != point.0 {
+                        to_remove.push(Point(i, point.1));
+                    }
+                    if i != point.1 {
+                        to_remove.push(Point(point.0, i));
+                    }
                 }
             }
             _ => {}
