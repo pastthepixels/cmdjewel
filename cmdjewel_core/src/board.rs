@@ -291,6 +291,7 @@ impl Board {
         // Scan vertically and then horizontally to get matches
         let v_matches = matches::scan_matches(&self, width, height, true);
         let mut h_matches = matches::scan_matches(&self, width, height, false);
+        // Vertical and combined matches
         let mut total_matches: Vec<Match> = v_matches
             .iter()
             .map(|m| {
@@ -311,58 +312,96 @@ impl Board {
                     gems.append(&mut h_matches[i].gems.clone());
                     h_matches.remove(i);
                 }
-                // See if any gem is at the cursor
-                let mut at = gems[0];
-                gems.iter().for_each(|&g| {
-                    if g == self.cursor {
-                        at = g;
-                    }
-                });
                 // See what gem should be created depending on the number of gems
                 let color = self.color_at_point(&self.data, gems[0]).unwrap();
-                let what = match gems.len() {
-                    5 if shared.is_some() => Some(Gem::Star(color)),
-                    5 => Some(Gem::Hypercube(GemSelector::None)),
-                    4 => Some(Gem::Flame(color)),
-                    _ => None,
+                let what = if shared.is_some() && gems.len() == 5 {
+                    Some(Gem::Star(color))
+                } else {
+                    None
                 };
                 Match {
                     gems: gems,
-                    at: at,
+                    at: m.at,
                     what: what,
                     children: vec![], // TODO: recursively check `gems` for special gems to activate, adding a Match to children
                 }
             })
             .collect();
-        total_matches.append(
-            &mut h_matches
-                .iter()
-                .map(|m| {
-                    // See if any gem is at the cursor
-                    let mut at = m.gems[0];
-                    m.gems.iter().for_each(|&g| {
-                        if g == self.cursor {
-                            at = g;
-                        }
-                    });
-                    // See what gem should be created depending on the number of gems
-                    let color = self.color_at_point(&self.data, m.gems[0]).unwrap();
-                    let what = match m.gems.len() {
-                        5 => Some(Gem::Hypercube(GemSelector::None)),
-                        4 => Some(Gem::Flame(color)),
-                        _ => None,
-                    };
-                    Match {
-                        gems: m.gems.clone(),
-                        at: at,
-                        what: what,
-                        children: vec![], // TODO: recursively check `gems` for special gems to activate, adding a Match to children
-                    }
-                })
-                .collect(),
-        );
-        total_matches
+        // Horizontal matches
+        total_matches.append(&mut h_matches);
         // TODO: Scan for activated hypercubes, too!
+        for i in 0..self.data.len() {
+            if let Gem::Hypercube(_) = self.data[i] {
+                let gems = self.activate_special_gem(i, false);
+                if gems.len() > 0 {
+                    total_matches.push(Match {
+                        gems: gems,
+                        at: Point(0, 0),
+                        what: None,
+                        children: vec![],
+                    })
+                }
+            }
+        }
+        // Get list of total gems
+        let mut gems: Vec<Point<usize>> = vec![];
+        total_matches.iter().for_each(|m| {
+            gems.append(&mut m.gems.clone());
+        });
+        // Common checks
+        total_matches.iter_mut().for_each(|m| {
+            // See if any gem is at the cursor
+            m.at = m.gems[0];
+            m.gems.iter().for_each(|&g| {
+                if g == self.cursor {
+                    m.at = g;
+                }
+            });
+            // See what gem should be created depending on the number of gems
+            let color = self.color_at_point(&self.data, m.gems[0]).unwrap();
+            if m.what.is_none() {
+                m.what = match m.gems.len() {
+                    5 => Some(Gem::Hypercube(GemSelector::None)),
+                    4 => Some(Gem::Flame(color)),
+                    _ => None,
+                };
+            }
+            // Oh god we're doing this recursively now aren't we
+            self.get_matches_recursive(m, &mut gems);
+        });
+        total_matches
+    }
+
+    /// Sees if a match needs child matches -- e.g. if a match has triggered a special gem
+    fn get_matches_recursive(&self, m: &mut Match, gems: &mut Vec<Point<usize>>) {
+        m.gems
+            .iter()
+            .for_each(|&g| match self.data[self.point_to_index(g)] {
+                Gem::Normal(_) => (),
+                Gem::Empty => (),
+                _ => {
+                    let mut activated = self.activate_special_gem(self.point_to_index(g), false);
+                    activated = activated
+                        .iter()
+                        .map(|&p| p)
+                        .filter(|p| {
+                            let mut in_gems = false;
+                            gems.iter().for_each(|x| {
+                                if x.0 == p.0 && x.1 == p.1 {
+                                    in_gems = true;
+                                }
+                            });
+                            !in_gems
+                        })
+                        .collect();
+                    if activated.len() > 0 {
+                        let mut n = Match::new(activated.clone());
+                        gems.append(&mut activated);
+                        self.get_matches_recursive(&mut n, gems);
+                        m.children.push(n);
+                    }
+                }
+            })
     }
 
     /// Given a special gem, returns all the gems it is to remove (including itself)
@@ -430,16 +469,23 @@ impl Board {
     pub fn update_matching_gems(&mut self) {
         let matching_gems = self.get_matches();
         // Set every matching gem and (matching) special gem to empty
-        matching_gems.iter().for_each(|m| {
+        fn update_recursive(b: &mut Board, m: &Match) {
             m.gems.iter().for_each(|&point| {
-                self.data[self.point_to_index(point)] = Gem::Empty;
-                self.score += POINTS_SWAP as u32;
-                self.level_progress += self.get_swap_progress();
+                let idx = b.point_to_index(point);
+                if b.data[idx] != Gem::Empty {
+                    b.data[idx] = Gem::Empty;
+                    b.score += POINTS_SWAP as u32;
+                    b.level_progress += b.get_swap_progress();
+                }
             });
             if let Some(gem) = m.what {
-                self.data[self.point_to_index(m.at)] = gem;
+                b.data[b.point_to_index(m.at)] = gem;
             }
-        });
+            m.children.iter().for_each(|n| {
+                update_recursive(b, n);
+            });
+        }
+        matching_gems.iter().for_each(|m| update_recursive(self, m));
     }
 
     /// Returns true if the entire board is filled with gems.
