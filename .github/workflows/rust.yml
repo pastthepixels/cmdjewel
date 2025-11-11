@@ -15,11 +15,8 @@ jobs:
   build:
     strategy:
        matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash # fixes mingw things on windows
     steps:
     - uses: actions/checkout@v4
     # install alsa rust bindings on the ubuntu runner
@@ -28,10 +25,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install librust-alsa-dev
-    # build x86-pc-windows-gnu on windows
-    - name: Set build target on Windows
-      if: matrix.os == 'windows-latest'
-      run: echo "CARGO_BUILD_TARGET=x86_64-pc-windows-gnu" >> "$GITHUB_ENV"
     # build cmdjewel with cargo
     - name: Build
       run: cargo build --verbose --release
@@ -42,3 +35,20 @@ jobs:
         path: |
           target/release/cmdjewel
           target/release/cmdjewel.exe
+  build_windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash # fixes mingw things on windows
+    steps:
+    - uses: actions/checkout@v4
+    # build cmdjewel with cargo
+    - name: Build
+      run: cargo build --verbose --release --target=x86_64-pc-windows-gnu
+    # upload builds named after each runner (the linux one is cmdjewel-ubuntu-latest, built on ubuntu-latest)
+    - uses: actions/upload-artifact@v4
+      with:
+        name: cmdjewel-windows-latest
+        path: |
+          target/x86_64-pc-windows-gnu/release/cmdjewel
+          target/x86_64-pc-windows-gnu/release/cmdjewel.exe
