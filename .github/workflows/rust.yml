@@ -32,9 +32,8 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         name: cmdjewel-${{ matrix.os }}
-        path: |
-          target/release/cmdjewel
-          target/release/cmdjewel.exe
+        path: target/release/cmdjewel
+  # fuck you ste--i mean bill gates (we need to make msvc fuck off so it can run on any windows system)
   build_windows:
     runs-on: windows-latest
     defaults:
@@ -49,6 +48,4 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         name: cmdjewel-windows-latest
-        path: |
-          target/x86_64-pc-windows-gnu/release/cmdjewel
-          target/x86_64-pc-windows-gnu/release/cmdjewel.exe
+        path: target/x86_64-pc-windows-gnu/release/cmdjewel.exe
