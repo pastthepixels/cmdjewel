@@ -99,6 +99,7 @@ pub fn show_menu_splash(s: &mut Cursive) {
 /// This starts the game given a BoardConfig (which decides game factors such as if it is in classic/zen mode)
 pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     let name = config.name.clone();
+    let soundtrack = if config.infinite { 0x4b } else { 0x0d };
     // Creates the layout for the dialog
     let layout = LinearLayout::vertical()
         .child(
@@ -142,7 +143,7 @@ pub fn show_game(s: &mut Cursive, config: BoardConfig) {
     let game_dialog = Dialog::around(layout).title(name);
 
     // Adds the dialog into a new layer
-    switch_screen(s, game_dialog, 0x0d);
+    switch_screen(s, game_dialog, soundtrack);
 }
 
 /// Shows the settings dialog.

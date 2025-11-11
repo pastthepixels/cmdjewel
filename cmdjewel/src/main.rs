@@ -44,6 +44,8 @@ fn main() {
     stream.play().unwrap();
     it2play_rs::play(0);
     it2play_rs::set_global_volume((config::load_config().settings.music_vol * 128.) as u16);
+    // Set title
+    siv.set_window_title("cmdjewel");
     // show the start screen
     ui::show_menu_splash(&mut siv);
     // set up commands

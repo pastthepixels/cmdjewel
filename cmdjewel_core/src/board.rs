@@ -130,7 +130,7 @@ impl Board {
     }
 
     /// Gets a gem from a point
-    pub fn get_gem(&mut self, point: Point<usize>) -> Gem {
+    pub fn get_gem(&self, point: Point<usize>) -> Gem {
         self.data[self.point_to_index(point)]
     }
 
@@ -372,41 +372,70 @@ impl Board {
                 };
             }
             // Oh god we're doing this recursively now aren't we
-            self.get_matches_recursive(m, &mut gems);
+            self.get_matches_recursive(m, &mut gems, color);
         });
         total_matches
     }
 
     /// Sees if a match needs child matches -- e.g. if a match has triggered a special gem
-    fn get_matches_recursive(&self, m: &mut Match, gems: &mut Vec<Point<usize>>) {
+    fn get_matches_recursive(&self, m: &mut Match, gems: &mut Vec<Point<usize>>, color: GemColor) {
         m.gems
             .iter()
             .for_each(|&g| match self.data[self.point_to_index(g)] {
                 Gem::Normal(_) => (),
                 Gem::Empty => (),
                 _ => {
+                    let mut color = color;
+                    if let Some(c) = self.color_at_point(&self.data, g) {
+                        color = c;
+                    }
                     let mut activated = self.activate_special_gem(self.point_to_index(g), false);
+                    // Hypercube hacks!
+                    if let Gem::Hypercube(_) = self.get_gem(g) {
+                        activated =
+                            self.activate_hypercube_with_color(self.point_to_index(g), color);
+                    }
+                    // Filter out activated special gems
                     activated = activated
                         .iter()
                         .map(|&p| p)
                         .filter(|p| {
                             let mut in_gems = false;
-                            gems.iter().for_each(|x| {
+                            gems.iter().for_each(|&x| {
                                 if x.0 == p.0 && x.1 == p.1 {
-                                    in_gems = true;
+                                    in_gems = if let Gem::Normal(_) = self.get_gem(x) {
+                                        false
+                                    } else {
+                                        true
+                                    }
                                 }
                             });
                             !in_gems
                         })
                         .collect();
+                    // Recursively call and add matched gems to `gems`/`m.children`
                     if activated.len() > 0 {
                         let mut n = Match::new(activated.clone());
                         gems.append(&mut activated);
-                        self.get_matches_recursive(&mut n, gems);
+                        self.get_matches_recursive(&mut n, gems, color);
                         m.children.push(n);
                     }
                 }
             })
+    }
+
+    /// Activates a hypercube with a color
+    fn activate_hypercube_with_color(&self, index: usize, color: GemColor) -> Vec<Point<usize>> {
+        let mut to_remove: Vec<Point<usize>> = Vec::new();
+        let point = self.index_to_point(index);
+        for i in 0..self.data.len() {
+            let piece_color = Board::color_at_index(&self.data, i);
+            if piece_color.is_some() && piece_color.unwrap() == color {
+                to_remove.push(self.index_to_point(i));
+            }
+        }
+        to_remove.push(point);
+        to_remove
     }
 
     /// Given a special gem, returns all the gems it is to remove (including itself)

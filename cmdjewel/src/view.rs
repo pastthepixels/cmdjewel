@@ -70,6 +70,7 @@ impl BoardView {
             point: Point(0, 0),
             duration: 10,
             animation_type: AnimationType::Explosion,
+            wait: 0,
         });
     }
 
@@ -80,6 +81,7 @@ impl BoardView {
             point: Point(0, 0),
             duration: 2,
             animation_type: AnimationType::Warp,
+            wait: 0,
         });
     }
 
@@ -95,18 +97,22 @@ impl BoardView {
     fn update_animations(&mut self) {
         // Reduce duration of each animation
         self.animations.iter_mut().for_each(|animation| {
-            // Animation logic
-            match animation.animation_type {
-                AnimationType::Blink(s) => {
-                    if animation.duration % 2 == 0 {
-                        animation.animation_type = AnimationType::Blink(!s)
+            if animation.wait == 0 {
+                // Animation logic
+                match animation.animation_type {
+                    AnimationType::Blink(s) => {
+                        if animation.duration % 2 == 0 {
+                            animation.animation_type = AnimationType::Blink(!s)
+                        }
                     }
+                    _ => (),
                 }
-                _ => (),
-            }
-            // Count down all animations
-            if animation.duration != 0 {
-                animation.duration -= 1;
+                // Count down all animations
+                if animation.duration != 0 {
+                    animation.duration -= 1;
+                }
+            } else {
+                animation.wait -= 1;
             }
         });
     }
@@ -120,46 +126,44 @@ impl BoardView {
         // Highlight all matching gems
         if self.board.is_full() {
             let mut points: Vec<Point<usize>> = Vec::new();
-            fn recurse(m: &Match, v: &mut BoardView, points: &mut Vec<Point<usize>>) {
+            fn recurse(r: u8, m: &Match, v: &mut BoardView, points: &mut Vec<Point<usize>>) {
                 if m.what.is_some() {
                     // Blink inserted gems
                     v.animations.push(AnimationDetails {
                         point: m.at,
                         duration: 16,
                         animation_type: AnimationType::Blink(true),
+                        wait: r * 8,
                     });
                 }
                 m.gems.iter().for_each(|&p| {
-                    if !points.contains(&p) {
-                        points.push(p);
+                    if let Gem::Normal(_) = v.board.get_gem(p.clone()) {
+                        // Highlight normal gems
+                        v.animations.push(AnimationDetails {
+                            point: p,
+                            duration: 8,
+                            animation_type: AnimationType::Highlight,
+                            wait: r * 8,
+                        });
+                    } else {
+                        // Blink special gems
+                        v.animations.push(AnimationDetails {
+                            point: p,
+                            duration: 16,
+                            animation_type: AnimationType::Blink(true),
+                            wait: r * 8,
+                        });
                     }
                 });
                 m.children.iter().for_each(|c| {
-                    recurse(c, v, points);
+                    recurse(r + 1, c, v, points);
                 });
             }
             // Highlight matching gems
             self.board
                 .get_matches()
                 .iter()
-                .for_each(|m| recurse(m, self, &mut points));
-            points.iter().for_each(|&p| {
-                if let Gem::Normal(_) = self.board.get_gem(p.clone()) {
-                    // Highlight normal gems
-                    self.animations.push(AnimationDetails {
-                        point: p,
-                        duration: 8,
-                        animation_type: AnimationType::Highlight,
-                    });
-                } else {
-                    // Blink special gems
-                    self.animations.push(AnimationDetails {
-                        point: p,
-                        duration: 16,
-                        animation_type: AnimationType::Blink(true),
-                    });
-                }
-            });
+                .for_each(|m| recurse(0, m, self, &mut points));
         }
         // Explode if not valid
         if !self.board.is_valid() && self.board.is_full() {
@@ -234,6 +238,7 @@ impl cursive::view::View for BoardView {
             self.animations.iter().for_each(|anim| {
                 if anim.point.0 == point.0
                     && anim.point.1 == point.1
+                    && anim.wait == 0
                     && (anim.animation_type == AnimationType::Highlight
                         || anim.animation_type == AnimationType::Blink(true))
                 {

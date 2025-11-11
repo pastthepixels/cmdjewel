@@ -34,6 +34,7 @@ pub struct AnimationDetails {
     /// Point corresponding with a cell to animate.
     pub point: Point<usize>,
     /// Length of a cell animation
+    pub wait: u8,
     pub duration: u8,
     pub animation_type: AnimationType,
 }
