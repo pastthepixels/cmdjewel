@@ -28,6 +28,10 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install librust-alsa-dev
+    # build x86-pc-windows-gnu on windows
+    - name: Set build target on Windows
+      if: matrix.os == 'windows-latest'
+      run: echo "CARGO_BUILD_TARGET=x86_64-pc-windows-gnu" >> "$GITHUB_ENV"
     # build cmdjewel with cargo
     - name: Build
       run: cargo build --verbose --release
